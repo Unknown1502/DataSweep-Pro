@@ -1,21 +1,10 @@
 import { create } from 'zustand';
-import type { QualityReport } from '../lib/domain/quality';
 import { ingestCsv, ingestJson } from '../lib/engine/ingest';
 import type { Dataset } from '../lib/engine/registry';
 import type { AuditEntry } from '../lib/tools/guards';
 import { initToolContext, registry } from '../lib/tools/context';
 
 export type BootStatus = 'booting' | 'ready' | 'failed';
-
-/** A change the agent proposed that is waiting on the user's decision. */
-export interface PendingChange {
-  readonly toolName: string;
-  readonly args: Record<string, unknown>;
-  readonly summary: string;
-  readonly details: Record<string, unknown>;
-  readonly token: string;
-  readonly expiresAt: string;
-}
 
 interface AppState {
   status: BootStatus;
@@ -26,12 +15,9 @@ interface AppState {
   datasets: Dataset[];
   selectedId: string | null;
 
-  report: QualityReport | null;
-  analyzing: boolean;
   actionError: string | null;
 
   activity: AuditEntry[];
-  pending: PendingChange | null;
 
   boot: () => Promise<void>;
   pushActivity: (entry: AuditEntry) => void;
@@ -39,9 +25,6 @@ interface AppState {
   loadSample: (name: string, csv: string) => Promise<void>;
   select: (id: string | null) => void;
   refresh: () => void;
-  setReport: (report: QualityReport | null) => void;
-  setAnalyzing: (analyzing: boolean) => void;
-  setPending: (pending: PendingChange | null) => void;
   setActionError: (message: string | null) => void;
 }
 
@@ -51,11 +34,8 @@ export const useApp = create<AppState>((set, get) => ({
   revision: 0,
   datasets: [],
   selectedId: null,
-  report: null,
-  analyzing: false,
   actionError: null,
   activity: [],
-  pending: null,
 
   boot: async () => {
     try {
@@ -104,14 +84,11 @@ export const useApp = create<AppState>((set, get) => ({
         : { activity: [...state.activity, entry].slice(-500) },
     ),
 
-  select: (id) => set({ selectedId: id, report: null, pending: null, actionError: null }),
+  select: (id) => set({ selectedId: id, actionError: null }),
 
   refresh: () =>
     set((state) => ({ revision: state.revision + 1, datasets: registry.list() })),
 
-  setReport: (report) => set({ report }),
-  setAnalyzing: (analyzing) => set({ analyzing }),
-  setPending: (pending) => set({ pending }),
   setActionError: (actionError) => set({ actionError }),
 }));
 
