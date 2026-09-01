@@ -1,0 +1,44 @@
+{
+  "name": "datasweep-pro",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Agent-human collaborative data cleaning studio, powered by WebMCP and DuckDB-Wasm. Runs entirely in the browser.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:evals": "vitest run tests/evals",
+    "test:integration": "vitest run tests/integration",
+    "relay": "npx -y @mcp-b/webmcp-local-relay@latest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "@mcp-b/global": "5.1.0",
+    "@mcp-b/react-webmcp": "5.1.0",
+    "apache-arrow": "^17.0.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "zod": "^4.5.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.9.0",
+    "vite": "^8.2.0",
+    "vitest": "^4.1.0"
+  }
+}

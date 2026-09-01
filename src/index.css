@@ -1,0 +1,199 @@
+@import 'tailwindcss';
+
+/*
+ * DataSweep Pro — "Ledger"
+ *
+ * The design thesis: this app is not a terminal, it is a ledger. Every action
+ * an agent takes on your data is a ruled entry in an append-only record that
+ * can be read backwards. The palette is a diff palette drawn from that idea —
+ * amber for the state that was, teal for the state that is — so colour carries
+ * meaning rather than decoration.
+ */
+
+@font-face {
+  font-family: 'Bricolage Grotesque Fallback';
+  src: local('Arial');
+  ascent-override: 92%;
+}
+
+@theme {
+  /* Ground and structure. Cool blue-black, not neutral: a neutral grey reads
+     as "unstyled", and the blue cast keeps the amber/teal pair legible. */
+  --color-ink-900: #0d1014;
+  --color-ink-850: #101419;
+  --color-ink-800: #12161c;
+  --color-ink-700: #181d25;
+  --color-ink-600: #212833;
+  --color-ink-500: #2e3745;
+  --color-ink-400: #3d4756;
+
+  --color-text-hi: #e6e9ee;
+  --color-text-mid: #9ba5b4;
+  --color-text-lo: #6b7686;
+
+  /* The diff pair. These two are the app's whole semantic system: what the
+     data was, and what it is now. */
+  --color-was: #d9903f;
+  --color-was-dim: #3a2d1c;
+  --color-now: #46b3c2;
+  --color-now-dim: #143038;
+
+  --color-alarm: #cf5b52;
+  --color-alarm-dim: #37201e;
+  --color-calm: #5e8b7e;
+
+  --font-display: 'Bricolage Grotesque', 'Bricolage Grotesque Fallback', system-ui, sans-serif;
+  --font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius-sm: 3px;
+  --radius-md: 5px;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background: var(--color-ink-900);
+    color: var(--color-text-hi);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Numerals are data. They align in columns everywhere they appear, so they
+     are tabular by default rather than per-component. */
+  .tnum,
+  td,
+  th {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-now);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  ::selection {
+    background: var(--color-now);
+    color: var(--color-ink-900);
+  }
+
+  /* Scrollbars, styled to disappear into the panels rather than punch holes. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-ink-500) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-ink-500);
+    border-radius: 99px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-ink-400);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* The eyebrow label. Used for every panel header so the structure reads as
+     a ruled form rather than a stack of cards. */
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-lo);
+  }
+
+  .panel {
+    background: var(--color-ink-800);
+    border: 1px solid var(--color-ink-600);
+    border-radius: var(--radius-md);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-ink-500);
+    background: var(--color-ink-700);
+    color: var(--color-text-hi);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--color-ink-600);
+    border-color: var(--color-ink-400);
+  }
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--color-now);
+    border-color: var(--color-now);
+    color: var(--color-ink-900);
+    font-weight: 600;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: #58c2d1;
+    border-color: #58c2d1;
+  }
+
+  /* Data grids can be very wide. They scroll inside themselves; the page body
+     must never scroll horizontally. */
+  .grid-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+}
+
+@layer utilities {
+  /*
+   * Applied only to row blocks below the fold. Containment isolates reflow so
+   * that re-rendering a diff does not relayout the whole page. Deliberately
+   * NOT applied to above-the-fold content, where evaluating visibility
+   * boundaries would delay first paint instead of helping it.
+   */
+  .defer-rows {
+    content-visibility: auto;
+    contain-intrinsic-size: auto none auto 28px;
+  }
+
+  .contain-pane {
+    contain: layout paint;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
