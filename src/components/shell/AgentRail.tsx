@@ -4,6 +4,7 @@ import { cn } from '../../lib/cn';
 import { createClaudeAgent } from '../../lib/agent/claude-agent';
 import { demoAgent } from '../../lib/agent/demo-agent';
 import { forgetKey, keyFor } from '../../lib/agent/key-vault';
+import { effectLabel, readIntent } from '../../lib/domain/intent';
 import { createOpenAIAgent } from '../../lib/agent/openai-agent';
 import { providerById, type ModelConnection } from '../../lib/agent/providers';
 import type { AgentEvent, AgentRun } from '../../lib/agent/types';
@@ -364,11 +365,39 @@ function EventView({
         </p>
       );
 
-    case 'approve':
+    case 'approve': {
+      // Read from the dry run that already ran, so what the agent is asking for
+      // is stated in measured terms rather than in its own description of it.
+      const intent = readIntent(event.details);
+
       return (
         <div className="rounded-md border border-warn-line bg-warn-dim p-2.5">
           <div className="eyebrow mb-1.5 text-warn">Waiting for your approval</div>
           <p className="text-[12px] leading-relaxed text-fg">{event.summary}</p>
+
+          {intent && (
+            <div className="mt-2 space-y-1.5 border-t border-warn-line/60 pt-2">
+              {intent.steps.map((step, i) => (
+                <div key={`${step.operation}-${i}`}>
+                  <div className="flex flex-wrap items-baseline gap-x-1.5 font-mono text-[11px]">
+                    <span className="text-warn">{step.operation}</span>
+                    {step.column && <span className="text-fg-muted">{step.column}</span>}
+                    <span className="text-fg-subtle tabular-nums">
+                      {step.rowsAffected.toLocaleString()} affected
+                    </span>
+                  </div>
+                  {step.description && (
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-fg-muted">
+                      {step.description}
+                    </p>
+                  )}
+                </div>
+              ))}
+              <p className="font-mono text-[10px] text-fg-subtle">
+                {intent.effects.map(effectLabel).join(' · ')} · reversible
+              </p>
+            </div>
+          )}
 
           {Array.isArray(event.details['caveats']) &&
             (event.details['caveats'] as string[]).map((c) => (
@@ -389,6 +418,7 @@ function EventView({
           )}
         </div>
       );
+    }
 
     case 'done':
       return event.text ? (

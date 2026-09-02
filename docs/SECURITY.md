@@ -16,8 +16,43 @@ Three untrusted inputs:
 3. **Column names and headers.** Also attacker-controlled, and they end up in
    SQL identifiers.
 
-Explicitly out of scope: the user's own machine, their browser, and their
-Anthropic API key. If those are compromised, nothing here helps.
+Explicitly out of scope: the user's own machine, their browser, and their model
+API keys. If those are compromised, nothing here helps.
+
+```mermaid
+flowchart TB
+    subgraph untrusted["Untrusted"]
+        cells["Cell values<br/>attacker-controlled text"]
+        headers["Column names<br/>end up in SQL identifiers"]
+        args["Tool arguments<br/>chosen by a model"]
+    end
+
+    subgraph defended["Defenses"]
+        fence["Quarantine fence<br/>per-call random nonce"]
+        allow["Registry allow-list<br/>+ minted table names"]
+        schema["Zod validation<br/>+ column membership check"]
+        gate["Two-phase gate<br/>argument-bound token"]
+    end
+
+    subgraph trusted["Trusted"]
+        sql["Generated SQL"]
+        ctx["Model context"]
+    end
+
+    cells --> fence --> ctx
+    headers --> allow --> sql
+    args --> schema --> gate --> sql
+
+    classDef bad fill:#432421,stroke:#703c36,color:#e9edf3
+    classDef def fill:#3e2912,stroke:#69441b,color:#e9edf3
+    classDef good fill:#143526,stroke:#1e5a40,color:#e9edf3
+    class cells,headers,args bad
+    class fence,allow,schema,gate def
+    class sql,ctx good
+```
+
+Nothing crosses from the left column to the right without passing through the
+middle one. That is the whole security posture in one picture.
 
 ## Controls
 

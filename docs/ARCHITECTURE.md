@@ -7,7 +7,7 @@ Four layers. Each one can be understood and tested without the layer above it.
 │  UI            React components                          │
 │                calls tools via callTool()                │
 ├──────────────────────────────────────────────────────────┤
-│  Tools         10 WebMCP tools + withGuards() middleware │
+│  Tools         15 WebMCP tools + withGuards() middleware │
 │                registered on document.modelContext       │
 ├──────────────────────────────────────────────────────────┤
 │  Domain        pure functions — analyzers, SQL builders, │
@@ -17,6 +17,28 @@ Four layers. Each one can be understood and tested without the layer above it.
 │                checkpoints. Knows nothing about MCP.     │
 └──────────────────────────────────────────────────────────┘
 ```
+
+```mermaid
+flowchart TB
+    ui["<b>UI</b><br/>React components"]
+    tools["<b>Tools</b><br/>15 registrations + withGuards()"]
+    domain["<b>Domain</b><br/>analyzers · SQL builders · injection · exporters<br/><i>pure, no I/O</i>"]
+    engine["<b>Engine</b><br/>SqlEngine · registry · ingest · checkpoints"]
+    duck[("DuckDB-Wasm")]
+
+    ui -- "callTool()" --> tools
+    ext["External MCP client"] -- "document.modelContext" --> tools
+    tools --> domain
+    tools --> engine
+    domain -. "compiles SQL for" .-> engine
+    engine --> duck
+
+    classDef pure fill:#143526,stroke:#1e5a40,color:#e9edf3
+    class domain pure
+```
+
+Arrows point one way only. The domain layer knows nothing about tools, and the
+engine knows nothing about MCP.
 
 The **domain layer is pure** — no WASM, no async I/O. That is why most of the
 suite runs in milliseconds and why the analyzers and exporters are easy to test
@@ -68,6 +90,26 @@ real DuckDB table.
 - Applying a change materializes a new table and appends.
 - Undo moves `headIndex`. Nothing is deleted, so redo works.
 - `history[0]` is the original upload and is never destroyed.
+
+```mermaid
+flowchart LR
+    c0["history[0]<br/>Original upload<br/><i>never destroyed</i>"]
+    c1["history[1]<br/>trim_whitespace"]
+    c2["history[2]<br/>standardize_dates"]
+    c3["history[3]<br/>parse_numbers"]
+
+    c0 --> c1 --> c2 --> c3
+    head(["headIndex → 2"]) -.-> c2
+
+    classDef live fill:#103242,stroke:#17546f,color:#e9edf3
+    classDef future fill:#1f242b,stroke:#2a2f38,color:#8d95a1
+    class c2 live
+    class c3 future
+```
+
+Each node is a real DuckDB table. Undo moves the pointer left, redo moves it
+right, and nothing is recomputed — which is why both are instant. `history[3]`
+above is dimmed because it has been undone, not deleted: it is still reachable.
 
 Applying a change while rewound discards the abandoned branch — editor
 undo/redo semantics — and returns the orphaned tables so they can be dropped.
