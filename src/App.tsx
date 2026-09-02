@@ -26,6 +26,8 @@ export function App() {
   const [railOpen, setRailOpen] = useState(false);
 
   const dataset = useSelectedDataset();
+  const selectedId = useApp((s) => s.selectedId);
+  const select = useApp((s) => s.select);
   const refresh = useApp((s) => s.refresh);
   const setActionError = useApp((s) => s.setActionError);
 
@@ -86,6 +88,14 @@ export function App() {
         run: () => setAgentOpen((open) => !open),
       },
       {
+        key: 'o',
+        meta: true,
+        label: 'Open a file',
+        description: 'Back to the file picker',
+        enabled: !!selectedId,
+        run: () => select(null),
+      },
+      {
         key: '?',
         label: 'This list',
         description: 'Show keyboard shortcuts',
@@ -98,7 +108,7 @@ export function App() {
         run: () => setHelpOpen(false),
       },
     ],
-    [dataset, step],
+    [dataset, step, selectedId, select],
   );
 
   useKeyboardShortcuts(shortcuts);
@@ -106,6 +116,31 @@ export function App() {
   useEffect(() => {
     void boot();
   }, [boot]);
+
+  /**
+   * Keep the URL hash in step with the selected dataset, so Back works.
+   *
+   * The hash is the source of truth rather than a mirror of it: the effect only
+   * pushes when the hash disagrees with state, so a selection driven *by*
+   * popstate finds the hash already correct and does not push again. Without
+   * that check, going back would immediately push a new entry and the button
+   * would appear broken.
+   */
+  useEffect(() => {
+    const target = selectedId ? `#${selectedId}` : '';
+    if (window.location.hash === target) return;
+    window.history.pushState(null, '', target || window.location.pathname);
+  }, [selectedId]);
+
+  useEffect(() => {
+    function onPopState() {
+      const id = window.location.hash.replace(/^#/, '');
+      const { datasets, select: choose } = useApp.getState();
+      choose(id && datasets.some((d) => d.id === id) ? id : null);
+    }
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   // Every tool call, agent- or human-initiated, lands in the same ledger.
   // Owned by an effect with cleanup so a remount replaces the subscription

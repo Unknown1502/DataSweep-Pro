@@ -237,6 +237,14 @@ control rots unnoticed. These check that no write occurred, by row count.
 
 ---
 
+## Getting around
+
+The selected dataset lives in the URL hash, so the browser Back and Forward
+buttons work and a link to a loaded dataset survives a reload. There is also a
+**Files** button in the header (`Ctrl/Cmd+O`) that returns to the file screen,
+which lists everything already loaded alongside the upload box — so returning to
+the picker never means losing the datasets you have open.
+
 ## Interface
 
 Dialogs trap focus, carry `role="dialog"` / `aria-modal`, close on Escape, lock

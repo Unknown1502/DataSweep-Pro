@@ -74,6 +74,8 @@ export function Workspace() {
 function EmptyState() {
   const uploadFile = useApp((s) => s.uploadFile);
   const loadSample = useApp((s) => s.loadSample);
+  const datasets = useApp((s) => s.datasets);
+  const select = useApp((s) => s.select);
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,6 +160,32 @@ function EmptyState() {
         <p className="mt-3 rounded-sm border border-alarm/40 bg-alarm-dim px-3 py-2 text-xs text-text-hi">
           {error}
         </p>
+      )}
+
+      {datasets.length > 0 && (
+        <div className="mt-10">
+          <div className="eyebrow mb-3">Already loaded</div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {datasets.map((d) => {
+              const head = d.history[d.headIndex];
+              return (
+                <button
+                  key={d.id}
+                  onClick={() => select(d.id)}
+                  className="panel flex items-baseline justify-between gap-3 p-3 text-left transition-colors hover:border-ink-400"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-text-hi">
+                    {d.name}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] text-text-lo tabular-nums">
+                    {(head?.rowCount ?? 0).toLocaleString()} rows
+                    {d.headIndex > 0 ? ` · ${d.headIndex} step${d.headIndex === 1 ? '' : 's'}` : ''}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       <div className="mt-10">

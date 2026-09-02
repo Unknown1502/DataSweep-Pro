@@ -43,11 +43,14 @@ export function TopBar({
 
         {datasets.length > 0 && (
           <select
-            value={selectedId ?? ''}
-            onChange={(e) => select(e.target.value || null)}
+            value={selectedId ?? '__none__'}
+            onChange={(e) => select(e.target.value === '__none__' ? null : e.target.value)}
             className="max-w-[38vw] rounded-sm border border-ink-500 bg-ink-700 px-2 py-1 font-mono text-xs text-text-hi sm:max-w-none"
             aria-label="Selected dataset"
           >
+            {/* Without this the picker shows a dataset name while the file
+                screen is open, which reads as though one is loaded. */}
+            <option value="__none__">Choose a dataset…</option>
             {datasets.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -57,6 +60,17 @@ export function TopBar({
         )}
 
         <div className="flex-1" />
+
+        {selectedId && (
+          <button
+            className="btn"
+            onClick={() => select(null)}
+            title="Load another file (Ctrl+O)"
+          >
+            <span aria-hidden="true">&larr;</span>
+            <span className="hidden sm:inline">Files</span>
+          </button>
+        )}
 
         {!agentOpen && (
           <button className="btn" onClick={onOpenAgent}>

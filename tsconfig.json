@@ -24,9 +24,12 @@
     "noEmit": true,
 
     "types": ["vite/client"],
-    "baseUrl": ".",
+
+    // No "baseUrl": it is deprecated and stops working in TypeScript 7.
+    // Path mappings resolve relative to this file when baseUrl is absent, so
+    // the "./" prefix is what makes these work without it.
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src", "tests", "vite.config.ts"]
