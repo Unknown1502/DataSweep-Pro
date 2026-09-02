@@ -1,53 +1,75 @@
 @import 'tailwindcss';
 
 /*
- * DataSweep Pro — "Ledger"
+ * DataSweep Pro — data operations cockpit
  *
- * The design thesis: this app is not a terminal, it is a ledger. Every action
- * an agent takes on your data is a ruled entry in an append-only record that
- * can be read backwards. The palette is a diff palette drawn from that idea —
- * amber for the state that was, teal for the state that is — so colour carries
- * meaning rather than decoration.
+ * Colour is assigned by meaning, not decoration. Every hue below has exactly
+ * one job, so a reader can learn the language once and trust it everywhere:
+ *
+ *   primary (blue-cyan) — the action you can take, and where you are
+ *   agent   (violet)    — something an AI agent did
+ *   warn    (amber)     — an external MCP client, or a value we are unsure of
+ *   danger  (red)       — a security finding, or a destructive change
+ *   success (green)     — a confirmed pass
+ *
+ * The previous palette used amber for "the prior value" *and* nothing else,
+ * which left no colour for actor attribution. Prior state is now carried by
+ * de-emphasis (muted foreground) rather than by a hue — the past should recede
+ * — which frees amber for the one meaning it now has.
  */
 
-@font-face {
-  font-family: 'Bricolage Grotesque Fallback';
-  src: local('Arial');
-  ascent-override: 92%;
-}
-
 @theme {
-  /* Ground and structure. Cool blue-black, not neutral: a neutral grey reads
-     as "unstyled", and the blue cast keeps the amber/teal pair legible. */
-  --color-ink-900: #0d1014;
-  --color-ink-850: #101419;
-  --color-ink-800: #12161c;
-  --color-ink-700: #181d25;
-  --color-ink-600: #212833;
-  --color-ink-500: #2e3745;
-  --color-ink-400: #3d4756;
+  /* Application chrome: top bar and rails. Deliberately darker than the
+     workspace so the working surface reads as raised out of the shell. */
+  --color-shell-900: #0e1014;
+  --color-shell-800: #13161b;
+  --color-shell-700: #191d23;
 
-  --color-text-hi: #e6e9ee;
-  --color-text-mid: #9ba5b4;
-  --color-text-lo: #6b7686;
+  /* Working surface and the cards on it. */
+  --color-surface-900: #16191f;
+  --color-surface-800: #1b1f26;
+  --color-surface-700: #212630;
+  --color-surface-600: #29303b;
 
-  /* The diff pair. These two are the app's whole semantic system: what the
-     data was, and what it is now. */
-  --color-was: #d9903f;
-  --color-was-dim: #3a2d1c;
-  --color-now: #46b3c2;
-  --color-now-dim: #143038;
+  --color-line: #262c35;
+  --color-line-strong: #333b47;
 
-  --color-alarm: #cf5b52;
-  --color-alarm-dim: #37201e;
-  --color-calm: #5e8b7e;
+  /* Foreground. `fg-muted` was lifted from #9ba5b4: metadata was the most
+     common text in the product and the least readable, which is backwards. */
+  --color-fg: #e9edf3;
+  --color-fg-muted: #aab4c2;
+  --color-fg-subtle: #8590a0;
 
-  --font-display: 'Bricolage Grotesque', 'Bricolage Grotesque Fallback', system-ui, sans-serif;
+  --color-primary: #3fa7d6;
+  --color-primary-hover: #55b6e0;
+  --color-primary-fg: #08131a;
+  --color-primary-dim: #10293a;
+  --color-primary-line: #245a7a;
+
+  --color-agent: #9a87e0;
+  --color-agent-dim: #221d3a;
+  --color-agent-line: #4a3f7a;
+
+  --color-warn: #d9903f;
+  --color-warn-dim: #2f2418;
+  --color-warn-line: #6b4f26;
+
+  --color-danger: #e0645a;
+  --color-danger-hover: #ea7269;
+  --color-danger-dim: #2f1c1a;
+  --color-danger-line: #7a3b35;
+
+  --color-success: #4fb286;
+  --color-success-dim: #12291f;
+  --color-success-line: #2c6349;
+
+  --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 
-  --radius-sm: 3px;
-  --radius-md: 5px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
 }
 
 @layer base {
@@ -62,17 +84,16 @@
   }
 
   body {
-    background: var(--color-ink-900);
-    color: var(--color-text-hi);
+    background: var(--color-shell-900);
+    color: var(--color-fg);
     font-family: var(--font-sans);
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
-  /* Numerals are data. They align in columns everywhere they appear, so they
-     are tabular by default rather than per-component. */
+  /* Numerals are data everywhere in this product, so they align by default. */
   .tnum,
   td,
   th {
@@ -80,91 +101,48 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-now);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
-    border-radius: 2px;
+    border-radius: 3px;
   }
 
   ::selection {
-    background: var(--color-now);
-    color: var(--color-ink-900);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
   }
 
-  /* Scrollbars, styled to disappear into the panels rather than punch holes. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-ink-500) transparent;
+    scrollbar-color: var(--color-surface-600) transparent;
   }
   *::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: var(--color-ink-500);
+    background: var(--color-surface-600);
     border-radius: 99px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: var(--color-ink-400);
+    background: var(--color-line-strong);
     background-clip: content-box;
   }
 }
 
 @layer components {
-  /* The eyebrow label. Used for every panel header so the structure reads as
-     a ruled form rather than a stack of cards. */
+  /* Tiny section label. The only place uppercase is used. */
   .eyebrow {
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 500;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    color: var(--color-text-lo);
+    color: var(--color-fg-subtle);
   }
 
-  .panel {
-    background: var(--color-ink-800);
-    border: 1px solid var(--color-ink-600);
-    border-radius: var(--radius-md);
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--color-ink-500);
-    background: var(--color-ink-700);
-    color: var(--color-text-hi);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: background 120ms ease, border-color 120ms ease;
-  }
-  .btn:hover:not(:disabled) {
-    background: var(--color-ink-600);
-    border-color: var(--color-ink-400);
-  }
-  .btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
-
-  .btn-primary {
-    background: var(--color-now);
-    border-color: var(--color-now);
-    color: var(--color-ink-900);
-    font-weight: 600;
-  }
-  .btn-primary:hover:not(:disabled) {
-    background: #58c2d1;
-    border-color: #58c2d1;
-  }
-
-  /* Data grids can be very wide. They scroll inside themselves; the page body
-     must never scroll horizontally. */
+  /* Wide data grids scroll inside themselves; the page never scrolls sideways. */
   .grid-scroll {
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -174,9 +152,8 @@
 @layer utilities {
   /*
    * Applied only to row blocks below the fold. Containment isolates reflow so
-   * that re-rendering a diff does not relayout the whole page. Deliberately
-   * NOT applied to above-the-fold content, where evaluating visibility
-   * boundaries would delay first paint instead of helping it.
+   * re-rendering a diff does not relayout the page. Deliberately NOT applied
+   * above the fold, where evaluating visibility boundaries delays first paint.
    */
   .defer-rows {
     content-visibility: auto;

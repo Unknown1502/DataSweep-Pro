@@ -1,26 +1,26 @@
-import { registry } from '../lib/tools/context';
-import { Modal } from './Modal';
-import type { Dataset } from '../lib/engine/registry';
-import { useApp, useSelectedDataset } from '../store/app-store';
+import { registry } from '../../lib/tools/context';
+import type { Dataset } from '../../lib/engine/registry';
+import { useApp, useSelectedDataset } from '../../store/app-store';
+import { Badge } from '../ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 /**
  * Where this data came from and what was done to it.
  *
- * Drawn as inline SVG rather than pulling in a diagramming library: it is a
- * handful of rects and paths, and it matches the app's own palette instead of
- * looking like an embedded third-party widget.
+ * Inline SVG rather than a diagramming library: it is a handful of rects and
+ * paths, and it matches the product's own palette instead of looking like an
+ * embedded widget.
  *
- * **It does not pretend to be a graph when it isn't.** A single dataset's
- * history is a straight chain, and is drawn and described as one. A branch only
- * appears where one genuinely exists — a join, whose inputs are recorded on
- * `Dataset.parents` at the time the join runs.
+ * It does not pretend to be a graph when it isn't. A single dataset's history
+ * is a chain, drawn and described as one. A branch appears only where one
+ * genuinely exists — a join, whose inputs are recorded on `Dataset.parents`.
  */
 
-const NODE_W = 132;
-const NODE_H = 42;
-const GAP_X = 34;
-const GAP_Y = 22;
-const PAD = 14;
+const NODE_W = 150;
+const NODE_H = 48;
+const GAP_X = 40;
+const GAP_Y = 24;
+const PAD = 16;
 
 interface Node {
   id: string;
@@ -31,7 +31,7 @@ interface Node {
   kind: 'source' | 'step' | 'current' | 'undone';
 }
 
-export function LineageView({ onClose }: { onClose: () => void }) {
+export function LineagePanel() {
   const dataset = useSelectedDataset();
   useApp((s) => s.revision);
 
@@ -44,8 +44,6 @@ export function LineageView({ onClose }: { onClose: () => void }) {
   const nodes: Node[] = [];
   const edges: { from: string; to: string }[] = [];
 
-  // Parents occupy column 0, stacked. A join is the only way to get more than
-  // one, so more than one row here means a genuine merge.
   parents.forEach((parent, i) => {
     const head = parent.history[parent.headIndex];
     nodes.push({
@@ -63,7 +61,13 @@ export function LineageView({ onClose }: { onClose: () => void }) {
 
   dataset.history.forEach((checkpoint, i) => {
     const kind: Node['kind'] =
-      i === dataset.headIndex ? 'current' : i > dataset.headIndex ? 'undone' : i === 0 ? 'source' : 'step';
+      i === dataset.headIndex
+        ? 'current'
+        : i > dataset.headIndex
+          ? 'undone'
+          : i === 0
+            ? 'source'
+            : 'step';
 
     nodes.push({
       id: checkpoint.id,
@@ -93,46 +97,42 @@ export function LineageView({ onClose }: { onClose: () => void }) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
   const fill: Record<Node['kind'], string> = {
-    source: 'var(--color-ink-700)',
-    step: 'var(--color-ink-700)',
-    current: 'var(--color-now-dim)',
-    undone: 'var(--color-ink-800)',
+    source: 'var(--color-surface-700)',
+    step: 'var(--color-surface-700)',
+    current: 'var(--color-primary-dim)',
+    undone: 'var(--color-surface-900)',
   };
   const stroke: Record<Node['kind'], string> = {
-    source: 'var(--color-ink-500)',
-    step: 'var(--color-was)',
-    current: 'var(--color-now)',
-    undone: 'var(--color-ink-600)',
+    source: 'var(--color-line-strong)',
+    step: 'var(--color-line-strong)',
+    current: 'var(--color-primary)',
+    undone: 'var(--color-line)',
   };
 
   const isChain = parents.length === 0;
 
   return (
-    <Modal
-      title="Lineage"
-      subtitle={
-        isChain
-          ? `A linear history of ${dataset.history.length} state(s).`
-          : `Merged from ${parents.length} dataset(s).`
-      }
-      onClose={onClose}
-      width="max-w-4xl"
-      footer={
-        <p className="font-mono text-[10px] leading-relaxed text-text-lo">
-          Each box is a real DuckDB table. Dashed boxes were undone and are still reachable.
-          {isChain
-            ? ' This dataset was loaded from a file, so it has no upstream sources.'
-            : ' Upstream sources are shown on the left and are themselves unchanged.'}
-        </p>
-      }
-    >
-      <div className="grid-scroll p-4">
+    <Card>
+      <CardHeader className="flex-row items-center justify-between">
+        <div>
+          <CardTitle className="text-[14px]">Lineage</CardTitle>
+          <p className="mt-0.5 text-[12px] text-fg-muted">
+            {isChain
+              ? `A linear history of ${dataset.history.length} state${dataset.history.length === 1 ? '' : 's'}.`
+              : `Merged from ${parents.length} dataset${parents.length === 1 ? '' : 's'}.`}
+          </p>
+        </div>
+        <Badge>{isChain ? 'linear' : 'merge'}</Badge>
+      </CardHeader>
+
+      <CardContent>
+        <div className="grid-scroll rounded-md border border-line bg-shell-900 p-2">
           <svg
             width={width}
             height={height}
             viewBox={`0 0 ${width} ${height}`}
             role="img"
-            aria-label="Data lineage diagram"
+            aria-label={`Lineage: ${nodes.length} states${isChain ? ', linear' : ', merged'}`}
           >
             <defs>
               <marker
@@ -144,7 +144,7 @@ export function LineageView({ onClose }: { onClose: () => void }) {
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--color-ink-400)" />
+                <path d="M 0 1 L 7 4 L 0 7 z" fill="var(--color-line-strong)" />
               </marker>
             </defs>
 
@@ -164,8 +164,8 @@ export function LineageView({ onClose }: { onClose: () => void }) {
                   key={`${edge.from}-${edge.to}`}
                   d={`M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}`}
                   fill="none"
-                  stroke="var(--color-ink-500)"
-                  strokeWidth="1"
+                  stroke="var(--color-line-strong)"
+                  strokeWidth="1.25"
                   markerEnd="url(#lineage-arrow)"
                 />
               );
@@ -178,26 +178,28 @@ export function LineageView({ onClose }: { onClose: () => void }) {
                   y={y(node)}
                   width={NODE_W}
                   height={NODE_H}
-                  rx="4"
+                  rx="6"
                   fill={fill[node.kind]}
                   stroke={stroke[node.kind]}
-                  strokeWidth="1"
+                  strokeWidth={node.kind === 'current' ? 1.5 : 1}
                   strokeDasharray={node.kind === 'undone' ? '3 3' : undefined}
                 />
                 <text
-                  x={x(node) + 9}
-                  y={y(node) + 17}
-                  fontSize="10.5"
-                  fill={node.kind === 'undone' ? 'var(--color-text-lo)' : 'var(--color-text-hi)'}
+                  x={x(node) + 11}
+                  y={y(node) + 20}
+                  fontSize="11.5"
+                  fill={
+                    node.kind === 'undone' ? 'var(--color-fg-subtle)' : 'var(--color-fg)'
+                  }
                   fontFamily="var(--font-sans)"
                 >
-                  {node.label.length > 19 ? `${node.label.slice(0, 18)}…` : node.label}
+                  {node.label.length > 20 ? `${node.label.slice(0, 19)}…` : node.label}
                 </text>
                 <text
-                  x={x(node) + 9}
-                  y={y(node) + 31}
-                  fontSize="9.5"
-                  fill="var(--color-text-lo)"
+                  x={x(node) + 11}
+                  y={y(node) + 35}
+                  fontSize="10"
+                  fill="var(--color-fg-subtle)"
                   fontFamily="var(--font-mono)"
                 >
                   {node.sub}
@@ -205,8 +207,16 @@ export function LineageView({ onClose }: { onClose: () => void }) {
                 </text>
               </g>
             ))}
-        </svg>
-      </div>
-    </Modal>
+          </svg>
+        </div>
+
+        <p className="mt-3 text-[12px] leading-relaxed text-fg-subtle">
+          Each box is a real DuckDB table. Dashed boxes were undone and remain reachable.
+          {isChain
+            ? ' This dataset was loaded from a file, so it has no upstream sources.'
+            : ' Upstream sources are on the left and are themselves unchanged.'}
+        </p>
+      </CardContent>
+    </Card>
   );
 }

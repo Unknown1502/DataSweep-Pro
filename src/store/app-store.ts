@@ -6,6 +6,22 @@ import { initToolContext, registry } from '../lib/tools/context';
 
 export type BootStatus = 'booting' | 'ready' | 'failed';
 
+/**
+ * Which pane of the dataset workspace is showing.
+ *
+ * One piece of state drives both the left navigation and the tab strip, so the
+ * two can never disagree about where the user is.
+ */
+export type WorkspaceView =
+  | 'overview'
+  | 'findings'
+  | 'data'
+  | 'ledger'
+  | 'lineage'
+  | 'rules'
+  | 'exports'
+  | 'docs';
+
 interface AppState {
   status: BootStatus;
   bootError: string | null;
@@ -17,6 +33,7 @@ interface AppState {
 
   actionError: string | null;
 
+  view: WorkspaceView;
   activity: AuditEntry[];
 
   boot: () => Promise<void>;
@@ -24,6 +41,7 @@ interface AppState {
   uploadFile: (file: File) => Promise<void>;
   loadSample: (name: string, csv: string) => Promise<void>;
   select: (id: string | null) => void;
+  setView: (view: WorkspaceView) => void;
   refresh: () => void;
   setActionError: (message: string | null) => void;
 }
@@ -35,6 +53,7 @@ export const useApp = create<AppState>((set, get) => ({
   datasets: [],
   selectedId: null,
   actionError: null,
+  view: 'overview',
   activity: [],
 
   boot: async () => {
@@ -84,7 +103,12 @@ export const useApp = create<AppState>((set, get) => ({
         : { activity: [...state.activity, entry].slice(-500) },
     ),
 
-  select: (id) => set({ selectedId: id, actionError: null }),
+  // Opening a different dataset always lands on Overview: carrying a pane like
+  // "Lineage" across datasets shows a view of something the user did not ask
+  // about.
+  select: (id) => set({ selectedId: id, actionError: null, view: 'overview' }),
+
+  setView: (view) => set({ view }),
 
   refresh: () =>
     set((state) => ({ revision: state.revision + 1, datasets: registry.list() })),

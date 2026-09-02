@@ -247,10 +247,30 @@ the picker never means losing the datasets you have open.
 
 ## Interface
 
-Dialogs trap focus, carry `role="dialog"` / `aria-modal`, close on Escape, lock
-background scroll, and hand focus back to whatever opened them. The layout works
-down to a 390px phone: the ledger becomes a drawer and the agent panel a
-full-screen overlay that is closed by default, so a small screen lands on the
+A three-column shell: navigation, workspace, agent activity. The workspace uses
+tabs — Overview, Findings, Data, Ledger, Lineage, Rules, Exports, Docs — because
+showing all of them at once produced a page you had to scroll past to reach
+anything.
+
+Colour is assigned by meaning and nothing else:
+
+| | |
+|---|---|
+| blue-cyan | the action you can take, and where you are |
+| violet | something an agent did |
+| amber | an external MCP client, or a value we are unsure of |
+| red | a security finding, or a destructive change |
+| green | a confirmed pass |
+
+Status is never carried by colour alone — each actor has its own icon, the
+active tab has a rule as well as a tint, and rule results show a pass/fail glyph.
+
+Components are built on Radix primitives in `src/components/ui/`, wired to the
+project's own tokens rather than a second parallel palette. Dialogs trap focus,
+are labelled, close on Escape, lock background scroll and restore focus.
+
+The layout works down to a 390px phone: navigation becomes a drawer and agent
+activity a full-screen overlay, closed by default so a small screen lands on the
 data rather than on a panel covering it.
 
 The data grid sorts, filters and pages **in SQL**. The alternative — loading the

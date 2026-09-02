@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { scanValue, toExcerpt } from '../lib/domain/injection';
-import { getToolContext, isReady } from '../lib/tools/context';
-import { assertKnownColumn, quoteIdent, quoteLiteral } from '../lib/engine/sql';
-import type { Row } from '../lib/engine/types';
-import { useApp, useSelectedDataset } from '../store/app-store';
+import { scanValue, toExcerpt } from '../../lib/domain/injection';
+import { getToolContext, isReady } from '../../lib/tools/context';
+import { assertKnownColumn, quoteIdent, quoteLiteral } from '../../lib/engine/sql';
+import type { Row } from '../../lib/engine/types';
+import { useApp, useSelectedDataset } from '../../store/app-store';
 
 const PAGE_SIZE = 50;
 
@@ -149,7 +149,7 @@ export function DataPreview() {
 
   return (
     <section className="panel contain-pane">
-      <div className="flex flex-wrap items-center gap-3 border-b border-ink-600 px-4 py-2.5">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2.5">
         <span className="eyebrow">Data</span>
 
         <input
@@ -158,12 +158,12 @@ export function DataPreview() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter rows…"
           aria-label="Filter rows"
-          className="w-40 rounded-sm border border-ink-500 bg-ink-900 px-2 py-1 font-mono text-[11px] text-text-hi placeholder:text-text-lo sm:w-56"
+          className="w-40 rounded-sm border border-line-strong bg-shell-900 px-2 py-1 font-mono text-[11px] text-fg placeholder:text-fg-subtle sm:w-56"
         />
 
         <div className="flex-1" />
 
-        <span className="font-mono text-[10px] text-text-lo tabular-nums">
+        <span className="font-mono text-[10px] text-fg-subtle tabular-nums">
           {filtering
             ? `${total.toLocaleString()} of ${(head?.rowCount ?? 0).toLocaleString()} match`
             : `${(head?.rowCount ?? 0).toLocaleString()} rows`}
@@ -191,7 +191,7 @@ export function DataPreview() {
       </div>
 
       {error && (
-        <p role="alert" className="px-4 py-4 text-xs text-alarm">
+        <p role="alert" className="px-4 py-4 text-xs text-danger">
           {error}
         </p>
       )}
@@ -201,18 +201,18 @@ export function DataPreview() {
       {!error && (rows.length > 0 || !loading) && (
         <div className="grid-scroll max-h-[520px] overflow-y-auto" aria-busy={loading}>
           <table className="w-full border-collapse text-left">
-            <thead className="sticky top-0 z-10 bg-ink-850">
+            <thead className="sticky top-0 z-10 bg-shell-800">
               <tr>
                 <th
                   scope="col"
-                  className="border-b border-ink-600 px-2 py-1.5 font-mono text-[10px] font-normal text-text-lo"
+                  className="border-b border-line px-2 py-1.5 font-mono text-[10px] font-normal text-fg-subtle"
                 >
                   #
                 </th>
                 {columns.map((column) => {
                   const active = sort?.column === column;
                   return (
-                    <th key={column} scope="col" className="border-b border-ink-600 p-0">
+                    <th key={column} scope="col" className="border-b border-line p-0">
                       <button
                         onClick={() => toggleSort(column)}
                         aria-sort={
@@ -222,8 +222,8 @@ export function DataPreview() {
                               : 'descending'
                             : 'none'
                         }
-                        className={`flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-mono text-[10px] font-medium whitespace-nowrap transition-colors hover:text-text-hi ${
-                          active ? 'text-now' : 'text-text-mid'
+                        className={`flex w-full items-center gap-1 px-2.5 py-1.5 text-left font-mono text-[10px] font-medium whitespace-nowrap transition-colors hover:text-fg ${
+                          active ? 'text-primary' : 'text-fg-muted'
                         }`}
                         title={`Sort by ${column}`}
                       >
@@ -242,7 +242,7 @@ export function DataPreview() {
                 <tr>
                   <td
                     colSpan={columns.length + 1}
-                    className="px-4 py-8 text-center text-xs text-text-lo"
+                    className="px-4 py-8 text-center text-xs text-fg-subtle"
                   >
                     {filtering ? `Nothing matches "${debounced}".` : 'This dataset has no rows.'}
                   </td>
@@ -250,8 +250,8 @@ export function DataPreview() {
               )}
 
               {rows.map((row, index) => (
-                <tr key={index} className="defer-rows hover:bg-ink-800">
-                  <td className="px-2 py-1 font-mono text-[10px] text-text-lo tabular-nums">
+                <tr key={index} className="defer-rows hover:bg-surface-800">
+                  <td className="px-2 py-1 font-mono text-[10px] text-fg-subtle tabular-nums">
                     {page * PAGE_SIZE + index + 1}
                   </td>
                   {columns.map((column) => (
@@ -273,7 +273,7 @@ function TableSkeleton({ columns }: { columns: number }) {
     <div className="p-4" aria-busy="true" aria-label="Loading rows">
       <div className="mb-3 flex gap-3">
         {Array.from({ length: Math.min(columns, 6) }, (_, i) => (
-          <div key={i} className="h-3 flex-1 animate-pulse rounded-sm bg-ink-700" />
+          <div key={i} className="h-3 flex-1 animate-pulse rounded-sm bg-surface-700" />
         ))}
       </div>
       {Array.from({ length: 8 }, (_, r) => (
@@ -281,7 +281,7 @@ function TableSkeleton({ columns }: { columns: number }) {
           {Array.from({ length: Math.min(columns, 6) }, (_, c) => (
             <div
               key={c}
-              className="h-3 flex-1 animate-pulse rounded-sm bg-ink-800"
+              className="h-3 flex-1 animate-pulse rounded-sm bg-surface-800"
               style={{ animationDelay: `${(r * 3 + c) * 40}ms` }}
             />
           ))}
@@ -298,10 +298,10 @@ function Cell({ value }: { value: unknown }) {
   if (flagged.length > 0) {
     return (
       <td
-        className="max-w-[380px] truncate border-l border-alarm/30 bg-alarm-dim px-2.5 py-1 font-mono text-[11px] text-text-hi"
+        className="max-w-[380px] truncate border-l border-danger/30 bg-danger-dim px-2.5 py-1 font-mono text-[11px] text-fg"
         title={`Flagged: ${flagged.map((r) => r.description).join('; ')}`}
       >
-        <span className="mr-1.5 font-sans text-[9px] tracking-wider text-alarm uppercase">
+        <span className="mr-1.5 font-sans text-[9px] tracking-wider text-danger uppercase">
           flagged
         </span>
         {toExcerpt(String(value), 80)}
@@ -310,11 +310,11 @@ function Cell({ value }: { value: unknown }) {
   }
 
   if (isBlank) {
-    return <td className="px-2.5 py-1 font-mono text-[11px] text-text-lo italic">empty</td>;
+    return <td className="px-2.5 py-1 font-mono text-[11px] text-fg-subtle italic">empty</td>;
   }
 
   return (
-    <td className="max-w-[380px] truncate px-2.5 py-1 font-mono text-[11px] whitespace-nowrap text-text-hi">
+    <td className="max-w-[380px] truncate px-2.5 py-1 font-mono text-[11px] whitespace-nowrap text-fg">
       {toExcerpt(String(value), 80)}
     </td>
   );
