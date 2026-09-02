@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { unfence } from '../lib/domain/injection';
 import { callTool } from '../lib/tools';
 import { useSelectedDataset } from '../store/app-store';
 
@@ -7,6 +8,10 @@ const FORMATS = [
   { id: 'python', label: 'pandas' },
   { id: 'dbt', label: 'dbt' },
   { id: 'json', label: 'JSON' },
+  { id: 'great_expectations', label: 'Expectations' },
+  // Not a pipeline format, but this is where a user looks for "give me
+  // something to take away", so it belongs beside the others.
+  { id: 'docs', label: 'Docs' },
 ] as const;
 
 type Format = (typeof FORMATS)[number]['id'];
@@ -35,6 +40,18 @@ export function ExportPanel({ onClose }: { onClose: () => void }) {
       setLoading(true);
       setError(null);
       try {
+        if (format === 'docs') {
+          const result = (await callTool('generate_data_documentation', {
+            dataset_id: dataset.id,
+          })) as { documentation: string };
+          if (cancelled) return;
+          // The fence is for agents; a person reading the panel just wants the
+          // document.
+          setCode(unfence(result.documentation));
+          setSteps(0);
+          return;
+        }
+
         const result = (await callTool('export_transformation_pipeline', {
           dataset_id: dataset.id,
           format,
@@ -73,7 +90,9 @@ export function ExportPanel({ onClose }: { onClose: () => void }) {
           <div>
             <div className="eyebrow">Export pipeline</div>
             <p className="mt-0.5 font-mono text-[10px] text-text-lo">
-              {steps} applied step{steps === 1 ? '' : 's'} · steps you undid are excluded
+              {format === 'docs'
+                ? 'A data dictionary and methodology, generated from measured data'
+                : `${steps} applied step${steps === 1 ? '' : 's'} · steps you undid are excluded`}
             </p>
           </div>
           <button className="btn" onClick={onClose}>

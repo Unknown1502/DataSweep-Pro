@@ -224,6 +224,34 @@ describe('semantic type detection', () => {
     expect(d.detectedType).toBe('boolean');
   });
 
+  it('does not mistake 5-digit ids for postcodes', async () => {
+    // Regression: the US ZIP pattern claimed "10001" and mislabelled every
+    // 5-digit id column as a postal code.
+    const d = await detect('order_id', ['10001', '10002', '10003', '10004']);
+    expect(d.detectedType).toBe('identifier');
+  });
+
+  it('still recognises unambiguous postcodes', async () => {
+    const uk = await detect('postcode', ['SW1A 1AA', 'EC2R 8AH', 'M1 1AE']);
+    expect(uk.detectedType).toBe('postcode');
+
+    const zip4 = await detect('zip', ['10001-1234', '90210-5678', '60601-0001']);
+    expect(zip4.detectedType).toBe('postcode');
+  });
+
+  it('does not call a mostly-distinct column a category', async () => {
+    // Regression: dropping the ratio check on small samples classified a
+    // 20-distinct-value customer column as a category on 21 rows.
+    const names = Array.from({ length: 20 }, (_, i) => `Customer ${i}`);
+    const d = await detect('customer', [...names, 'Customer 0']);
+    expect(d.detectedType).toBe('free_text');
+  });
+
+  it('still calls a genuine small vocabulary a category', async () => {
+    const d = await detect('tier', ['gold', 'silver', 'gold', 'bronze', 'gold', 'silver']);
+    expect(d.detectedType).toBe('categorical');
+  });
+
   it('does not mistake a bare run of digits for a phone number', async () => {
     const d = await detect('code', ['1234567890', '9876543210', '5555555555']);
     expect(d.detectedType).not.toBe('phone');

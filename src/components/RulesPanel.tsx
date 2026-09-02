@@ -269,7 +269,12 @@ export function RulesPanel({ onClose }: { onClose: () => void }) {
                           }`
                         : rule.reason}
                     </p>
-                    {rule.examples && (
+                    {/*
+                      A not_null rule's offending values are empty by
+                      definition, so there is nothing to show. Rendering the
+                      box anyway leaves an empty frame that reads as a bug.
+                    */}
+                    {rule.examples && unfence(rule.examples).trim().length > 0 && (
                       <pre className="mt-1.5 overflow-x-auto rounded-sm border border-ink-600 bg-ink-900 px-2 py-1 font-mono text-[10px] whitespace-pre-wrap text-text-mid">
                         {unfence(rule.examples)}
                       </pre>

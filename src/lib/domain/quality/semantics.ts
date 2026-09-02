@@ -86,8 +86,12 @@ export const SEMANTIC_PATTERNS: readonly FormatPattern[] = [
   {
     id: 'postcode',
     label: 'Postal code',
-    // UK outward+inward, US ZIP / ZIP+4.
-    regex: String.raw`^([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|\d{5}(-\d{4})?)$`,
+    // UK outward+inward, or US ZIP+4. The bare 5-digit ZIP is deliberately
+    // NOT matched: "10001" is far more often an order id or a quantity, and
+    // claiming it as a postcode mislabels ordinary integer columns. A real ZIP
+    // column loses its label; an id column keeps its meaning. That trade is
+    // worth it because the id case is overwhelmingly more common.
+    regex: String.raw`^([A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}|\d{5}-\d{4})$`,
   },
   {
     id: 'boolean',
@@ -128,21 +132,35 @@ export interface SemanticDetection {
 const CATEGORICAL_MAX_DISTINCT = 25;
 const CATEGORICAL_MAX_RATIO = 0.2;
 /**
- * Below this many values the ratio test is meaningless — three distinct labels
- * across ten rows is obviously a category even though 0.3 exceeds the ratio.
- * Repetition alone carries the signal at small sizes.
+ * Below this many values the strict ratio is too harsh — three distinct labels
+ * across ten rows is obviously a category even though 0.3 exceeds 0.2.
  */
 const CATEGORICAL_SMALL_SAMPLE = 30;
+/**
+ * The loosened ratio for small samples: at least ~30% of values must be repeats.
+ *
+ * It is loosened, not removed. Removing it entirely classified a customer
+ * column with 20 distinct values across 21 rows as a category, which is plainly
+ * wrong. Keeping the strict 0.2 rejected `gold, silver, gold, bronze, gold`,
+ * which is plainly a vocabulary. The line asks only for meaningful reuse, which
+ * is the most a small sample can actually support.
+ *
+ * Honest limitation: below roughly ten values this distinction is close to
+ * undecidable either way, which is why `confidence` is always reported
+ * alongside the type rather than presented as a verdict.
+ */
+const CATEGORICAL_SMALL_SAMPLE_RATIO = 0.7;
 
 function looksCategorical(distinctCount: number, populated: number): boolean {
   if (populated === 0 || distinctCount === 0) return false;
   if (distinctCount > CATEGORICAL_MAX_DISTINCT) return false;
   // There must be actual repetition; all-distinct values are not a vocabulary.
   if (distinctCount >= populated) return false;
-  return (
-    populated < CATEGORICAL_SMALL_SAMPLE ||
-    distinctCount / populated <= CATEGORICAL_MAX_RATIO
-  );
+
+  const ratio = distinctCount / populated;
+  return populated < CATEGORICAL_SMALL_SAMPLE
+    ? ratio <= CATEGORICAL_SMALL_SAMPLE_RATIO
+    : ratio <= CATEGORICAL_MAX_RATIO;
 }
 
 /** A column whose entire value set is {0,1} is boolean, however it parses. */
