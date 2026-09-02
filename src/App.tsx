@@ -14,8 +14,16 @@ export function App() {
   const status = useApp((s) => s.status);
   const bootError = useApp((s) => s.bootError);
   const boot = useApp((s) => s.boot);
-  const [agentOpen, setAgentOpen] = useState(true);
+  /**
+   * Open by default only where it sits beside the workspace. Below xl the panel
+   * is a full-screen overlay, so defaulting it open would put a phone user on
+   * the agent with the data they came to look at hidden behind it.
+   */
+  const [agentOpen, setAgentOpen] = useState(
+    () => typeof window === 'undefined' || window.innerWidth >= 1280,
+  );
   const [helpOpen, setHelpOpen] = useState(false);
+  const [railOpen, setRailOpen] = useState(false);
 
   const dataset = useSelectedDataset();
   const refresh = useApp((s) => s.refresh);
@@ -132,10 +140,14 @@ export function App() {
           the tool surface. */}
       <RegisterTools />
 
-      <TopBar onOpenAgent={() => setAgentOpen(true)} agentOpen={agentOpen} />
+      <TopBar
+        onOpenAgent={() => setAgentOpen(true)}
+        agentOpen={agentOpen}
+        onToggleRail={() => setRailOpen((o) => !o)}
+      />
 
       <div className="flex min-h-0 flex-1">
-        <LedgerRail />
+        <LedgerRail open={railOpen} onClose={() => setRailOpen(false)} />
         <main className="contain-pane min-w-0 flex-1 overflow-y-auto">
           {status === 'booting' ? <Booting /> : <Workspace />}
         </main>

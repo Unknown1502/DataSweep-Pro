@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Modal } from './Modal';
 import { unfence } from '../lib/domain/injection';
 import { callTool } from '../lib/tools';
 import { useApp, useSelectedDataset } from '../store/app-store';
@@ -200,7 +201,7 @@ export function QualityPanel() {
           <ul className="divide-y divide-ink-600">
             {report.issues.map((issue) => (
               <li key={issue.id} className="defer-rows px-4 py-3.5">
-                <div className="flex items-start gap-3">
+                <div className="flex flex-col items-start gap-3 sm:flex-row">
                   <span
                     className={`shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-[9px] tracking-wider uppercase ${
                       SEVERITY_STYLE[issue.severity]
@@ -273,7 +274,7 @@ export function QualityPanel() {
 
                   {issue.suggested_fix && (
                     <button
-                      className="btn shrink-0"
+                      className="btn w-full shrink-0 justify-center sm:w-auto"
                       onClick={() => void proposeFix(issue)}
                       disabled={applying !== null}
                     >
@@ -350,13 +351,27 @@ function ConfirmDialog({
   const after = Number(details['rows_after'] ?? 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6">
-      <div className="panel w-full max-w-xl">
-        <div className="border-b border-ink-600 px-4 py-3">
-          <div className="eyebrow">Approve this change</div>
+    <Modal
+      title="Approve this change"
+      onClose={busy ? () => undefined : onCancel}
+      width="max-w-xl"
+      footer={
+        <div className="flex items-center justify-between gap-4">
+          <span className="font-mono text-[10px] text-text-lo">
+            Reversible from the ledger afterwards
+          </span>
+          <div className="flex gap-2">
+            <button className="btn" onClick={onCancel} disabled={busy}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={onConfirm} disabled={busy}>
+              {busy ? 'Applying…' : 'Apply change'}
+            </button>
+          </div>
         </div>
-
-        <div className="px-4 py-4">
+      }
+    >
+      <div className="px-4 py-4">
           <p className="text-[13px] leading-relaxed text-text-hi">{summary}</p>
 
           <div className="mt-4 flex items-center gap-6">
@@ -385,24 +400,9 @@ function ConfirmDialog({
                   {caveat}
                 </li>
               ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between border-t border-ink-600 px-4 py-3">
-          <span className="font-mono text-[10px] text-text-lo">
-            Reversible from the ledger afterwards
-          </span>
-          <div className="flex gap-2">
-            <button className="btn" onClick={onCancel} disabled={busy}>
-              Cancel
-            </button>
-            <button className="btn btn-primary" onClick={onConfirm} disabled={busy}>
-              {busy ? 'Applying…' : 'Apply change'}
-            </button>
-          </div>
-        </div>
+          </ul>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

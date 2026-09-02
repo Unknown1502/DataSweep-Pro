@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Modal } from './Modal';
 import { unfence } from '../lib/domain/injection';
 import type { RuleType } from '../lib/domain/rules';
 import { isPersistenceAvailable, removeRule } from '../lib/rules-store';
@@ -124,30 +125,24 @@ export function RulesPanel({ onClose }: { onClose: () => void }) {
   if (!dataset) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6"
-      onClick={onClose}
+    <Modal
+      title="Quality rules"
+      subtitle={
+        isPersistenceAvailable()
+          ? 'Saved in this browser only — not shared with a team.'
+          : 'Browser storage unavailable; rules will not survive a reload.'
+      }
+      onClose={onClose}
+      height="h-[min(720px,88vh)]"
+      footer={
+        storageNote ? (
+          <span className="font-mono text-[10px] text-text-lo">{storageNote}</span>
+        ) : undefined
+      }
     >
-      <div
-        className="panel flex h-[min(720px,88vh)] w-full max-w-3xl flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-ink-600 px-4 py-3">
-          <div>
-            <div className="eyebrow">Quality rules</div>
-            <p className="mt-0.5 font-mono text-[10px] text-text-lo">
-              {isPersistenceAvailable()
-                ? 'Saved in this browser only — not shared with a team.'
-                : 'Browser storage unavailable; rules will not survive a reload.'}
-            </p>
-          </div>
-          <button className="btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
+      <div className="flex h-full flex-col">
         {/* Rule builder */}
-        <div className="border-b border-ink-600 px-4 py-3">
+        <div className="shrink-0 border-b border-ink-600 px-4 py-3">
           <div className="flex flex-wrap items-end gap-2">
             <label className="flex flex-col gap-1">
               <span className="eyebrow">Column</span>
@@ -236,7 +231,9 @@ export function RulesPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {error && (
-          <p className="border-b border-ink-600 px-4 py-2 text-xs text-alarm">{error}</p>
+          <p role="alert" className="border-b border-ink-600 px-4 py-2 text-xs text-alarm">
+            {error}
+          </p>
         )}
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -288,16 +285,10 @@ export function RulesPanel({ onClose }: { onClose: () => void }) {
                   </button>
                 </div>
               </li>
-            ))}
+          ))}
           </ul>
         </div>
-
-        {storageNote && (
-          <div className="border-t border-ink-600 px-4 py-2">
-            <span className="font-mono text-[10px] text-text-lo">{storageNote}</span>
-          </div>
-        )}
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -88,7 +88,10 @@ export function AgentPanel({ onClose }: { onClose: () => void }) {
     !!dataset && !running && (mode === 'demo' || apiKey.trim().startsWith('sk-ant-'));
 
   return (
-    <aside className="contain-pane flex w-[380px] shrink-0 flex-col border-l border-ink-600 bg-ink-850">
+    <aside
+      aria-label="Agent"
+      className="contain-pane fixed inset-0 z-40 flex flex-col border-ink-600 bg-ink-850 xl:static xl:z-auto xl:w-[380px] xl:shrink-0 xl:border-l"
+    >
       <div className="flex items-center justify-between border-b border-ink-600 px-3 py-2">
         <span className="eyebrow">Agent</span>
         <button className="font-mono text-[10px] text-text-lo hover:text-text-hi" onClick={onClose}>

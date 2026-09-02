@@ -1,4 +1,5 @@
 import { formatShortcut, type Shortcut } from '../hooks/useKeyboardShortcuts';
+import { Modal } from './Modal';
 
 export function ShortcutsHelp({
   shortcuts,
@@ -8,19 +9,8 @@ export function ShortcutsHelp({
   onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-ink-900/80 p-6"
-      onClick={onClose}
-    >
-      <div className="panel w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-ink-600 px-4 py-3">
-          <span className="eyebrow">Keyboard</span>
-          <button className="btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <dl className="px-4 py-3">
+    <Modal title="Keyboard" onClose={onClose} width="max-w-sm">
+      <dl className="px-4 py-3">
           {shortcuts.map((shortcut) => (
             <div
               key={shortcut.label}
@@ -38,9 +28,8 @@ export function ShortcutsHelp({
                 {formatShortcut(shortcut)}
               </dd>
             </div>
-          ))}
-        </dl>
-      </div>
-    </div>
+        ))}
+      </dl>
+    </Modal>
   );
 }

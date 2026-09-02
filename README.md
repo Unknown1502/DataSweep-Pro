@@ -237,6 +237,22 @@ control rots unnoticed. These check that no write occurred, by row count.
 
 ---
 
+## Interface
+
+Dialogs trap focus, carry `role="dialog"` / `aria-modal`, close on Escape, lock
+background scroll, and hand focus back to whatever opened them. The layout works
+down to a 390px phone: the ledger becomes a drawer and the agent panel a
+full-screen overlay that is closed by default, so a small screen lands on the
+data rather than on a panel covering it.
+
+The data grid sorts, filters and pages **in SQL**. The alternative — loading the
+table into React state for a client-side table library — would be slower and
+would cap the openable file at whatever fits in JS memory, while DuckDB sits in
+the same tab able to sort millions of rows. Sorting is numeric-aware: columns are
+VARCHAR by design, so a plain text sort puts 875000 before 980.50. Ordering by
+the parsed number first and the raw text second gets both kinds of column right
+in one expression.
+
 ## Known limits
 
 Stated plainly, because a tool that hides its edges is harder to trust:
@@ -257,6 +273,10 @@ Stated plainly, because a tool that hides its edges is harder to trust:
   we do not set them, so `selectBundle` picks the `eh` bundle. Expected, not a
   misconfiguration.
 - **The scripted demo agent is not a language model.** It follows a fixed plan.
+- **Sorting a column of European-format numbers is wrong until you parse it.**
+  `1.290,50` strips to 1.29 and sorts low. That is honest rather than hidden:
+  the app has not been told that column is European yet, and `parse_numbers`
+  fixes both the value and the sort.
 
 ---
 

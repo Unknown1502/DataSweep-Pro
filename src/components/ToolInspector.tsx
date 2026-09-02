@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Modal } from './Modal';
 import { ALL_TOOLS } from '../lib/tools';
 
 /**
@@ -14,28 +15,18 @@ export function ToolInspector({ onClose }: { onClose: () => void }) {
   const tool = ALL_TOOLS.find((t) => t.name === selected);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6"
-      onClick={onClose}
+    <Modal
+      title="Registered tools"
+      subtitle={`published on document.modelContext · ${ALL_TOOLS.length} tools`}
+      onClose={onClose}
+      width="max-w-4xl"
+      height="h-[min(680px,85vh)]"
     >
-      <div
-        className="panel flex h-[min(680px,85vh)] w-full max-w-4xl flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-ink-600 px-4 py-3">
-          <div>
-            <div className="eyebrow">Registered tools</div>
-            <p className="mt-0.5 font-mono text-[10px] text-text-lo">
-              published on document.modelContext · {ALL_TOOLS.length} tools
-            </p>
-          </div>
-          <button className="btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div className="flex min-h-0 flex-1">
-          <nav className="w-[230px] shrink-0 overflow-y-auto border-r border-ink-600">
+      <div className="flex h-full min-h-0 flex-col sm:flex-row">
+        <nav
+          aria-label="Tools"
+          className="max-h-40 w-full shrink-0 overflow-y-auto border-b border-ink-600 sm:max-h-none sm:w-[230px] sm:border-r sm:border-b-0"
+        >
             {ALL_TOOLS.map((t) => (
               <button
                 key={t.name}
@@ -50,11 +41,11 @@ export function ToolInspector({ onClose }: { onClose: () => void }) {
                 <span className="mt-0.5 block font-sans text-[9px] tracking-wider text-text-lo uppercase">
                   {t.annotations.readOnlyHint ? 'read only' : 'mutating'}
                 </span>
-              </button>
-            ))}
-          </nav>
+            </button>
+          ))}
+        </nav>
 
-          <div className="min-w-0 flex-1 overflow-y-auto p-4">
+        <div className="min-w-0 flex-1 overflow-y-auto p-4">
             {tool && (
               <>
                 <h3 className="font-mono text-[13px] text-text-hi">{tool.name}</h3>
@@ -81,11 +72,10 @@ export function ToolInspector({ onClose }: { onClose: () => void }) {
                 <pre className="grid-scroll rounded-sm border border-ink-600 bg-ink-900 p-3 font-mono text-[11px] leading-relaxed text-text-mid">
                   {JSON.stringify(tool.inputSchema, null, 2)}
                 </pre>
-              </>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

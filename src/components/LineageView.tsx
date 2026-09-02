@@ -1,4 +1,5 @@
 import { registry } from '../lib/tools/context';
+import { Modal } from './Modal';
 import type { Dataset } from '../lib/engine/registry';
 import { useApp, useSelectedDataset } from '../store/app-store';
 
@@ -107,29 +108,25 @@ export function LineageView({ onClose }: { onClose: () => void }) {
   const isChain = parents.length === 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6"
-      onClick={onClose}
+    <Modal
+      title="Lineage"
+      subtitle={
+        isChain
+          ? `A linear history of ${dataset.history.length} state(s).`
+          : `Merged from ${parents.length} dataset(s).`
+      }
+      onClose={onClose}
+      width="max-w-4xl"
+      footer={
+        <p className="font-mono text-[10px] leading-relaxed text-text-lo">
+          Each box is a real DuckDB table. Dashed boxes were undone and are still reachable.
+          {isChain
+            ? ' This dataset was loaded from a file, so it has no upstream sources.'
+            : ' Upstream sources are shown on the left and are themselves unchanged.'}
+        </p>
+      }
     >
-      <div
-        className="panel flex max-h-[86vh] w-full max-w-4xl flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-ink-600 px-4 py-3">
-          <div>
-            <div className="eyebrow">Lineage</div>
-            <p className="mt-0.5 font-mono text-[10px] text-text-lo">
-              {isChain
-                ? `A linear history of ${dataset.history.length} state(s).`
-                : `Merged from ${parents.length} dataset(s).`}
-            </p>
-          </div>
-          <button className="btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div className="grid-scroll min-h-0 flex-1 overflow-auto p-4">
+      <div className="grid-scroll p-4">
           <svg
             width={width}
             height={height}
@@ -208,18 +205,8 @@ export function LineageView({ onClose }: { onClose: () => void }) {
                 </text>
               </g>
             ))}
-          </svg>
-        </div>
-
-        <div className="border-t border-ink-600 px-4 py-2.5">
-          <p className="font-mono text-[10px] leading-relaxed text-text-lo">
-            Each box is a real DuckDB table. Dashed boxes were undone and are still reachable.
-            {isChain
-              ? ' This dataset was loaded from a file, so it has no upstream sources.'
-              : ' Upstream sources are shown on the left and are themselves unchanged.'}
-          </p>
-        </div>
+        </svg>
       </div>
-    </div>
+    </Modal>
   );
 }

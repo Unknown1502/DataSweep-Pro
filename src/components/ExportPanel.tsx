@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Modal } from './Modal';
 import { unfence } from '../lib/domain/injection';
 import { callTool } from '../lib/tools';
 import { useSelectedDataset } from '../store/app-store';
@@ -78,29 +79,18 @@ export function ExportPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-900/80 p-6"
-      onClick={onClose}
+    <Modal
+      title="Export pipeline"
+      subtitle={
+        format === 'docs'
+          ? 'A data dictionary and methodology, generated from measured data'
+          : `${steps} applied step${steps === 1 ? '' : 's'} · steps you undid are excluded`
+      }
+      onClose={onClose}
+      height="h-[min(700px,86vh)]"
     >
-      <div
-        className="panel flex h-[min(700px,86vh)] w-full max-w-3xl flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-ink-600 px-4 py-3">
-          <div>
-            <div className="eyebrow">Export pipeline</div>
-            <p className="mt-0.5 font-mono text-[10px] text-text-lo">
-              {format === 'docs'
-                ? 'A data dictionary and methodology, generated from measured data'
-                : `${steps} applied step${steps === 1 ? '' : 's'} · steps you undid are excluded`}
-            </p>
-          </div>
-          <button className="btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 border-b border-ink-600 px-4 py-2">
+      <div className="flex flex-col h-full">
+        <div className="flex shrink-0 flex-wrap items-center gap-1 border-b border-ink-600 px-4 py-2">
           {FORMATS.map((f) => (
             <button
               key={f.id}
@@ -121,8 +111,12 @@ export function ExportPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto p-4">
-          {loading && <p className="text-xs text-text-lo">Generating…</p>}
-          {error && <p className="text-xs text-alarm">{error}</p>}
+          {loading && <CodeSkeleton />}
+          {error && (
+            <p role="alert" className="text-xs text-alarm">
+              {error}
+            </p>
+          )}
           {!loading && !error && (
             <pre className="font-mono text-[11px] leading-relaxed whitespace-pre text-text-mid">
               {code}
@@ -130,6 +124,18 @@ export function ExportPanel({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
+    </Modal>
+  );
+}
+
+/** Shaped like the code it replaces, so the panel does not jump on load. */
+function CodeSkeleton() {
+  const widths = ['w-2/3', 'w-1/2', 'w-5/6', 'w-1/3', 'w-3/4', 'w-2/5', 'w-4/5'];
+  return (
+    <div className="space-y-2" aria-busy="true" aria-label="Generating export">
+      {widths.map((width, i) => (
+        <div key={i} className={`h-3 animate-pulse rounded-sm bg-ink-700 ${width}`} />
+      ))}
     </div>
   );
 }

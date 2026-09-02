@@ -12,7 +12,7 @@ import { useApp, useSelectedDataset } from '../store/app-store';
  * granularities — what the agent tried, and what actually stuck. Reading down
  * the rail tells you everything that has happened to your data, in order.
  */
-export function LedgerRail() {
+export function LedgerRail({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const dataset = useSelectedDataset();
   const activity = useApp((s) => s.activity);
   const refresh = useApp((s) => s.refresh);
@@ -43,15 +43,40 @@ export function LedgerRail() {
   }
 
   return (
-    <aside className="contain-pane flex w-[268px] shrink-0 flex-col border-r border-ink-600 bg-ink-850">
-      <div className="flex items-center justify-between border-b border-ink-600 px-3 py-2">
-        <span className="eyebrow">Ledger</span>
-        {dataset && (
-          <span className="font-mono text-[10px] text-text-lo">
-            {dataset.headIndex + 1}/{dataset.history.length}
-          </span>
-        )}
-      </div>
+    <>
+      {/* Backdrop, only while the drawer is overlaying content on small screens. */}
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-ink-900/70 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        aria-label="Ledger"
+        className={`contain-pane w-[268px] shrink-0 flex-col border-r border-ink-600 bg-ink-850 ${
+          open ? 'fixed inset-y-0 left-0 z-40 flex' : 'hidden'
+        } lg:static lg:z-auto lg:flex`}
+      >
+        <div className="flex items-center justify-between border-b border-ink-600 px-3 py-2">
+          <span className="eyebrow">Ledger</span>
+          <div className="flex items-center gap-2">
+            {dataset && (
+              <span className="font-mono text-[10px] text-text-lo">
+                {dataset.headIndex + 1}/{dataset.history.length}
+              </span>
+            )}
+            {onClose && (
+              <button
+                className="font-mono text-[10px] text-text-lo hover:text-text-hi lg:hidden"
+                onClick={onClose}
+              >
+                close
+              </button>
+            )}
+          </div>
+        </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         {!dataset ? (
@@ -120,8 +145,9 @@ export function LedgerRail() {
             </ol>
           </>
         )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }
 
