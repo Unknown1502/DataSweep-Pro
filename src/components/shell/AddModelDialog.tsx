@@ -113,7 +113,7 @@ export function AddModelDialog({
       <DialogContent
         title="Add chat model"
         description="Runs the same tools and the same approval gate as every other agent here."
-        className="max-w-[440px]"
+        className="max-w-110"
         footer={
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>

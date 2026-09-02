@@ -335,7 +335,7 @@ export function FilesScreen() {
       >
         <DialogContent
           title="Remove this dataset?"
-          className="max-w-[420px]"
+          className="max-w-105"
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setPendingRemoval(null)}>

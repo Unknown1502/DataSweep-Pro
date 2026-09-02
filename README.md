@@ -347,7 +347,7 @@ npm run test:evals    # security behaviour
 npm run test:integration
 ```
 
-366 tests. The integration and eval suites run **real DuckDB-Wasm** through its
+380 tests. The integration and eval suites run **real DuckDB-Wasm** through its
 Node bindings — no mock database.
 
 The security evals assert behaviour rather than exceptions. `rejects.toThrow()`
@@ -358,16 +358,27 @@ control rots unnoticed. These check that no write occurred, by row count.
 
 ## Interface
 
+**Light, dark, or follow your system** — the switch is in the header and the
+choice persists. Light is the default; an explicit choice beats the OS setting in
+both directions, and "System" is the absence of a preference rather than a third
+palette. Component code never branches on theme: every class is a semantic token,
+so the surface ladder inverts underneath them.
+
 A three-column shell: navigation, workspace, agent activity. Colour is assigned
-by meaning and nothing else — blue-cyan for actions and position, violet for
-agent activity, amber for external clients and uncertainty, red for security and
+by meaning and nothing else — blue for actions and position, violet for agent
+activity, amber for external clients and uncertainty, red for security and
 destruction, green for confirmed passes — and status is never carried by colour
 alone.
 
-The surface ramp is designed in OKLCH and measured rather than picked by eye; the
-contrast floor across every foreground and surface pairing is 4.57:1. The one
-signature element is the segmented quality gauge, whose discrete segments read as
-counted units because that is what a score out of 100 is.
+Both ramps are designed in OKLCH and measured rather than picked by eye. The
+light theme is warm rather than blue-grey, and every accent is darkened until it
+clears AA on the card *and* on the workspace ground — reusing dark-theme accents
+on a light background is the standard way to ship unreadable text. The contrast
+floors are 4.51:1 light and 4.57:1 dark, across every foreground against every
+surface it can land on.
+
+The one signature element is the segmented quality gauge, whose discrete segments
+read as counted units because that is what a score out of 100 is.
 
 The full design rationale, the defects the measurements caught, and the
 platform-behaviour notes are in [docs/INTERFACE.md](docs/INTERFACE.md).

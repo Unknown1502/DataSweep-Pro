@@ -3,6 +3,7 @@ import { ChevronRight, FolderOpen, Menu, Bot, Plug } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Hint, Separator } from '../ui/misc';
 import { ToolInspector } from '../panels/ToolInspector';
+import { ThemeToggle } from './ThemeToggle';
 import { useApp, useSelectedDataset } from '../../store/app-store';
 
 /**
@@ -116,6 +117,8 @@ export function TopBar({
             <span className="hidden sm:inline">Agent</span>
           </Button>
         )}
+
+        <ThemeToggle />
 
         <Button variant="outline" size="sm" onClick={() => setInspecting(true)}>
           <span className="hidden sm:inline">Tool inspector</span>

@@ -267,7 +267,7 @@ export function GitHubExportDialog({
             ? 'Demo mode. Every step below runs for real except the request itself.'
             : 'Live mode. This opens a real pull request on a repository you control.'
         }
-        className="max-w-[640px]"
+        className="max-w-160"
         footer={footer}
       >
         <div className="space-y-4 p-4">

@@ -3,6 +3,30 @@
 The design decisions behind the shell, and the measurements behind them. The
 README states the rules; this states how they were arrived at and what they cost.
 
+## Two themes, one set of names
+
+Light is the default; dark applies under `prefers-color-scheme: dark` and again
+under an explicit `[data-theme="dark"]`. That pairing is what lets an explicit
+choice win in **both** directions — light on a dark-set OS, dark on a light-set
+one — while "System" is simply the absence of the attribute rather than a third
+palette.
+
+Component code never branches on theme. Every class is a semantic token, so the
+ladder inverts underneath them: in light mode the card is the lightest plane and
+the chrome sits below it as grey, which is the same relationship the dark theme
+has, read from the other end.
+
+The preference is the one thing in the app that is persisted, and it is applied
+during module evaluation rather than in an effect — an effect runs after the
+first paint, so a dark-preferring user would see one white frame on every load.
+Storage access is wrapped, because a private-mode browser throws on access
+rather than returning null.
+
+Elevation is theme-dependent because the physics are: on a light ground a real
+shadow reads as raised, exactly as it does on paper, while on a dark ground that
+same shadow dissolves into the background and the lit top edge does the work
+instead.
+
 ## Colour is assigned by meaning
 
 | | |
@@ -21,7 +45,28 @@ attribution.
 Status is never carried by colour alone: each actor has its own icon, the active
 tab has a rule as well as a tint, and rule results show a pass/fail glyph.
 
-## The surface ramp was measured, not picked by eye
+## Both ramps were measured, not picked by eye
+
+### Light
+
+Warm (OKLCH hue 75) rather than blue-grey, at very low chroma so it reads as
+paper rather than beige. Every accent had to be **darkened** until it clears
+4.5:1 on the card and on the workspace ground — reusing dark-theme accents on a
+light background is the standard way to ship unreadable text. The floor is
+**4.51:1**.
+
+| token | light | on card | on ground |
+|---|---|---|---|
+| `primary` | `#04749d` | 5.22:1 | 4.59:1 |
+| `agent` | `#7658cb` | 5.17:1 | 4.55:1 |
+| `warn` | `#a25a02` | 5.21:1 | 4.58:1 |
+| `danger` | `#c33e38` | 5.12:1 | 4.51:1 |
+| `success` | `#047c46` | 5.24:1 | 4.61:1 |
+
+The scrollbar thumb is `#898581`, which clears the same 3:1 requirement against
+the light track that its dark counterpart does against the dark one.
+
+### Dark — and the defects measuring it caught
 
 Converting the palette to OKLCH surfaced two defects that were invisible on a
 good monitor and obvious in numbers:

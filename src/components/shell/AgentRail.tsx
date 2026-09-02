@@ -155,7 +155,7 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
   return (
     <aside
       aria-label="Agent activity"
-      className="contain-pane fixed inset-0 z-40 flex flex-col border-line bg-shell-800 xl:static xl:z-auto xl:w-[340px] xl:shrink-0 xl:border-l"
+      className="contain-pane fixed inset-0 z-40 flex flex-col border-line bg-shell-800 xl:static xl:z-auto xl:w-85 xl:shrink-0 xl:border-l"
     >
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2">

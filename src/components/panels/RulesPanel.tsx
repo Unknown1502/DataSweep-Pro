@@ -200,7 +200,7 @@ export function RulesPanel() {
             </div>
 
             {type === 'regex' && (
-              <div className="flex min-w-[220px] flex-1 flex-col gap-1">
+              <div className="flex min-w-55 flex-1 flex-col gap-1">
                 <Label htmlFor="rule-pattern">Pattern</Label>
                 <Input
                   id="rule-pattern"
@@ -237,7 +237,7 @@ export function RulesPanel() {
             )}
 
             {type === 'in_set' && (
-              <div className="flex min-w-[220px] flex-1 flex-col gap-1">
+              <div className="flex min-w-55 flex-1 flex-col gap-1">
                 <Label htmlFor="rule-values">Allowed values</Label>
                 <Input
                   id="rule-values"

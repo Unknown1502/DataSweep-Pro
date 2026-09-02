@@ -324,7 +324,7 @@ export function ExportsPanel({ initialFormat = 'sql' }: { initialFormat?: string
           )}
           {error && <Alert tone="danger">{error}</Alert>}
           {!loading && !error && (
-            <pre className="grid-scroll max-h-[460px] overflow-y-auto font-mono text-[11.5px] leading-relaxed whitespace-pre text-fg-muted">
+            <pre className="grid-scroll max-h-115 overflow-y-auto font-mono text-[11.5px] leading-relaxed whitespace-pre text-fg-muted">
               {code}
             </pre>
           )}

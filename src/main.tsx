@@ -8,7 +8,12 @@ import '@mcp-b/global';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { initTheme } from './lib/theme';
 import './index.css';
+
+// Before the first paint, not in an effect: an effect runs after paint, so a
+// dark-preferring user would see one white frame on every load.
+initTheme();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('Missing #root element.');

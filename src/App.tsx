@@ -185,7 +185,7 @@ export function App() {
 /** Shaped like the file screen, so the shell does not jump when it arrives. */
 function BootingSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-5 py-6" aria-busy="true" aria-label="Starting">
+    <div className="mx-auto w-full max-w-7xl px-5 py-6" aria-busy="true" aria-label="Starting">
       <Skeleton className="h-4 w-24" />
       <Skeleton className="mt-3 h-7 w-72" />
       <Skeleton className="mt-3 h-4 w-[46ch]" />

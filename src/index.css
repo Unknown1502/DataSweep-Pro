@@ -6,101 +6,88 @@
  * Colour is assigned by meaning, not decoration. Every hue below has exactly
  * one job, so a reader can learn the language once and trust it everywhere:
  *
- *   primary (blue-cyan) — the action you can take, and where you are
- *   agent   (violet)    — something an AI agent did
- *   warn    (amber)     — an external MCP client, or a value we are unsure of
- *   danger  (red)       — a security finding, or a destructive change
- *   success (green)     — a confirmed pass
+ *   primary (blue)   — the action you can take, and where you are
+ *   agent   (violet) — something an AI agent did
+ *   warn    (amber)  — an external MCP client, or a value we are unsure of
+ *   danger  (red)    — a security finding, or a destructive change
+ *   success (green)  — a confirmed pass
  *
  * Prior state is carried by de-emphasis rather than by a hue — the past should
  * recede — which leaves amber free for the one meaning it now has.
  *
  * ---------------------------------------------------------------------------
- * The ladder is designed in OKLCH, not picked by eye.
+ * Two themes, one set of names.
  *
- * The previous ramp was measured and found to be wrong in two specific ways:
+ * The light palette is defined on bare `:root`, so it is the default. The dark
+ * palette is applied twice: under `prefers-color-scheme: dark` guarded by
+ * `:not([data-theme="light"])`, and again under `[data-theme="dark"]`. That
+ * pairing is what lets an explicit choice win in BOTH directions — light on a
+ * dark-set OS, or dark on a light-set OS — while "System" is simply the absence
+ * of the attribute.
  *
- *   - `shell-700` (L 22.9) was LIGHTER than `surface-900` (L 21.3), so the
- *     chrome and the working surface sat at the same value. That is why the
- *     whole app read flat: there was no elevation to read.
- *   - `line` (L 29.1) was lighter than `surface-700` (L 26.8), so a border was
- *     brighter than the card it enclosed on some surfaces and not others.
+ * Component code never branches on theme. Every class is a semantic token, so
+ * the ladder inverts underneath them: in light mode the CARD is the lightest
+ * plane and the chrome sits below it as grey, which is the same relationship
+ * the dark theme has, read from the other end.
  *
- * Both are fixed below. Every step is now at least 3.4 in OKLCH L — roughly the
- * threshold at which a step stays visible on a dim laptop screen rather than
- * only on a calibrated one — and the chrome sits strictly below the workspace,
- * so the working surface reads as lifted out of the shell.
+ * ---------------------------------------------------------------------------
+ * Both ramps are designed in OKLCH and measured, not picked by eye.
  *
- * Contrast was then verified for every foreground against every surface it can
- * land on. The floor is 4.57:1. The single pairing below AA (`fg-subtle` on
- * `surface-600`, 3.84:1) cannot occur: `surface-600` is only ever a meter track
- * or a button hover, and the button carries `fg` at 9.89:1.
+ * Light is warm (hue 75) rather than blue-grey, at very low chroma so it reads
+ * as paper rather than beige, and its accents are darkened until each clears
+ * 4.5:1 on the card AND on the workspace ground. Reusing dark-theme accents on
+ * a light ground is the standard way to ship unreadable text; every one of the
+ * five had to move.
+ *
+ * Measured floors: light 4.51:1, dark 4.57:1, for every foreground against
+ * every surface it can land on.
  */
 
 @theme {
-  /* Application chrome: top bar and rails. Now genuinely below the workspace. */
-  --color-shell-900: #05070b; /* L 12.6 — the ground everything sits on */
-  --color-shell-800: #0b0e13; /* L 16.2 */
-  --color-shell-700: #12151c; /* L 19.6 */
+  /* --------------------------------------------------------------- light ---
+     The default. Chrome is grey, the card is near-white. */
+  --color-shell-900: #e2dfdb;
+  --color-shell-800: #ebe9e6;
+  --color-shell-700: #f4f2ef;
 
-  /* Working surface and the cards on it. */
-  --color-surface-900: #181c23; /* L 22.4 — workspace ground */
-  --color-surface-800: #1f242b; /* L 25.8 — the card */
-  --color-surface-700: #282d36; /* L 29.6 — raised card, input, control */
-  --color-surface-600: #333943; /* L 34.2 — track fill, hover */
+  --color-surface-900: #f2efec;
+  --color-surface-800: #fffefc;
+  --color-surface-700: #f6f4f1;
+  --color-surface-600: #e8e5e0;
 
-  --color-line: #2a2f38; /* L 30.4 — a consistent step above its own surface */
-  --color-line-strong: #3d444f; /* L 38.4 */
+  --color-line: #dbd7d2;
+  --color-line-strong: #c2bdb7;
 
-  /* Foreground. `fg-muted` carries most of the metadata in the product, so it
-     is deliberately not the faintest thing on screen. */
-  --color-fg: #e9edf3;
-  --color-fg-muted: #b3bcc9;
-  --color-fg-subtle: #8d95a1;
+  --color-fg: #191511;
+  --color-fg-muted: #534f4a;
+  --color-fg-subtle: #6c6863;
 
-  /*
-   * The accents were measured and left alone.
-   *
-   * They already sit within 6 points of each other in OKLCH lightness
-   * (65–71) at similar chroma, which is what makes them read as peers rather
-   * than one shouting over the others. Only `agent` and `danger` moved, by two
-   * points each, to hold their contrast against the lightened cards.
-   */
-  --color-primary: #3fa7d6;
-  --color-primary-hover: #53b7e7;
-  --color-primary-fg: #000b13;
-  --color-primary-dim: #103242;
-  --color-primary-line: #17546f;
+  --color-primary: #04749d;
+  --color-primary-hover: #015d7f;
+  --color-primary-fg: #ffffff;
+  --color-primary-dim: #e0f4fe;
+  --color-primary-line: #9cd7f7;
 
-  --color-agent: #a08fe7;
-  --color-agent-dim: #2e2944;
-  --color-agent-line: #4e4573;
+  --color-agent: #7658cb;
+  --color-agent-dim: #f0eeff;
+  --color-agent-line: #cec6fc;
 
-  --color-warn: #d9903f;
-  --color-warn-dim: #3e2912;
-  --color-warn-line: #69441b;
+  --color-warn: #a25a02;
+  --color-warn-dim: #feecdf;
+  --color-warn-line: #f3c39d;
 
-  --color-danger: #ea7267;
-  --color-danger-hover: #ff8579;
-  --color-danger-dim: #432421;
-  --color-danger-line: #703c36;
+  --color-danger: #c33e38;
+  --color-danger-hover: #a32f2a;
+  --color-danger-dim: #feebe9;
+  --color-danger-line: #fbbcb3;
 
-  --color-success: #4fb286;
-  --color-success-dim: #143526;
-  --color-success-line: #1e5a40;
+  --color-success: #047c46;
+  --color-success-dim: #d9fae3;
+  --color-success-line: #a7ddb9;
 
-  /*
-   * Every tinted callout now sits at L 30 — one clear step ABOVE the card.
-   * The previous fills were built for the older, darker surfaces: against the
-   * corrected ladder `agent-dim` and `danger-dim` measured darker than the card
-   * they sat on, so an alert read as a hole punched in the panel rather than as
-   * a raised, tinted region.
-   */
-
-  /* Scrollbar thumb. Kept as its own token because it has a hard requirement
-     the surface ramp does not: 3:1 against the track it floats over. The old
-     value (`surface-600` over the workspace) measured 1.47:1. */
-  --color-scroll-thumb: #686f79;
+  /* Its own token because it has a requirement the ramp does not: 3:1 against
+     the track it floats over. */
+  --color-scroll-thumb: #898581;
 
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -111,21 +98,147 @@
   --radius-lg: 10px;
 
   /*
-   * Elevation is a 1px top highlight, not a drop shadow.
+   * Elevation is theme-dependent, because the physics are.
    *
-   * On a dark UI a blurred shadow mostly disappears into the ground; what
-   * actually reads as "raised" is the lit top edge, because that is what a real
-   * edge does under overhead light. Shadows are kept for things that genuinely
-   * float above the page and need to detach from it.
+   * On a light ground a real shadow reads as raised, exactly as it does on
+   * paper. On a dark ground that same shadow mostly dissolves into the
+   * background, and what reads as raised is the lit top edge instead — so the
+   * dark theme swaps to that below rather than reusing a shadow nobody sees.
    */
-  --elevate-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
-  --elevate-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.45);
-  --elevate-float: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 24px 48px -16px rgb(0 0 0 / 0.75);
+  --elevate-1: 0 1px 2px rgb(28 22 14 / 0.05);
+  --elevate-2: 0 1px 3px rgb(28 22 14 / 0.08), 0 1px 2px rgb(28 22 14 / 0.04);
+  --elevate-float: 0 24px 48px -16px rgb(28 22 14 / 0.22), 0 2px 8px rgb(28 22 14 / 0.08);
+}
+
+/*
+ * The dark palette, written once and applied under two selectors.
+ *
+ * Kept as plain custom properties rather than a second `@theme`: Tailwind emits
+ * `background-color: var(--color-surface-800)` for `bg-surface-800`, so
+ * redefining the variable in a scope re-themes every utility that reads it
+ * without generating a duplicate class for each one.
+ */
+@layer base {
+  :root {
+    --dark-shell-900: #05070b;
+    --dark-shell-800: #0b0e13;
+    --dark-shell-700: #12151c;
+    --dark-surface-900: #181c23;
+    --dark-surface-800: #1f242b;
+    --dark-surface-700: #282d36;
+    --dark-surface-600: #333943;
+    --dark-line: #2a2f38;
+    --dark-line-strong: #3d444f;
+    --dark-fg: #e9edf3;
+    --dark-fg-muted: #b3bcc9;
+    --dark-fg-subtle: #8d95a1;
+    --dark-primary: #3fa7d6;
+    --dark-primary-hover: #53b7e7;
+    --dark-primary-fg: #000b13;
+    --dark-primary-dim: #103242;
+    --dark-primary-line: #17546f;
+    --dark-agent: #a08fe7;
+    --dark-agent-dim: #2e2944;
+    --dark-agent-line: #4e4573;
+    --dark-warn: #d9903f;
+    --dark-warn-dim: #3e2912;
+    --dark-warn-line: #69441b;
+    --dark-danger: #ea7267;
+    --dark-danger-hover: #ff8579;
+    --dark-danger-dim: #432421;
+    --dark-danger-line: #703c36;
+    --dark-success: #4fb286;
+    --dark-success-dim: #143526;
+    --dark-success-line: #1e5a40;
+    --dark-scroll-thumb: #686f79;
+  }
+
+  /* One block, referenced by both dark selectors below. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      color-scheme: dark;
+      --color-shell-900: var(--dark-shell-900);
+      --color-shell-800: var(--dark-shell-800);
+      --color-shell-700: var(--dark-shell-700);
+      --color-surface-900: var(--dark-surface-900);
+      --color-surface-800: var(--dark-surface-800);
+      --color-surface-700: var(--dark-surface-700);
+      --color-surface-600: var(--dark-surface-600);
+      --color-line: var(--dark-line);
+      --color-line-strong: var(--dark-line-strong);
+      --color-fg: var(--dark-fg);
+      --color-fg-muted: var(--dark-fg-muted);
+      --color-fg-subtle: var(--dark-fg-subtle);
+      --color-primary: var(--dark-primary);
+      --color-primary-hover: var(--dark-primary-hover);
+      --color-primary-fg: var(--dark-primary-fg);
+      --color-primary-dim: var(--dark-primary-dim);
+      --color-primary-line: var(--dark-primary-line);
+      --color-agent: var(--dark-agent);
+      --color-agent-dim: var(--dark-agent-dim);
+      --color-agent-line: var(--dark-agent-line);
+      --color-warn: var(--dark-warn);
+      --color-warn-dim: var(--dark-warn-dim);
+      --color-warn-line: var(--dark-warn-line);
+      --color-danger: var(--dark-danger);
+      --color-danger-hover: var(--dark-danger-hover);
+      --color-danger-dim: var(--dark-danger-dim);
+      --color-danger-line: var(--dark-danger-line);
+      --color-success: var(--dark-success);
+      --color-success-dim: var(--dark-success-dim);
+      --color-success-line: var(--dark-success-line);
+      --color-scroll-thumb: var(--dark-scroll-thumb);
+      --elevate-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
+      --elevate-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.45);
+      --elevate-float: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 24px 48px -16px rgb(0 0 0 / 0.75);
+    }
+  }
+
+  /* And again for an explicit choice, so the toggle beats the OS either way. */
+  :root[data-theme='dark'] {
+    color-scheme: dark;
+    --color-shell-900: var(--dark-shell-900);
+    --color-shell-800: var(--dark-shell-800);
+    --color-shell-700: var(--dark-shell-700);
+    --color-surface-900: var(--dark-surface-900);
+    --color-surface-800: var(--dark-surface-800);
+    --color-surface-700: var(--dark-surface-700);
+    --color-surface-600: var(--dark-surface-600);
+    --color-line: var(--dark-line);
+    --color-line-strong: var(--dark-line-strong);
+    --color-fg: var(--dark-fg);
+    --color-fg-muted: var(--dark-fg-muted);
+    --color-fg-subtle: var(--dark-fg-subtle);
+    --color-primary: var(--dark-primary);
+    --color-primary-hover: var(--dark-primary-hover);
+    --color-primary-fg: var(--dark-primary-fg);
+    --color-primary-dim: var(--dark-primary-dim);
+    --color-primary-line: var(--dark-primary-line);
+    --color-agent: var(--dark-agent);
+    --color-agent-dim: var(--dark-agent-dim);
+    --color-agent-line: var(--dark-agent-line);
+    --color-warn: var(--dark-warn);
+    --color-warn-dim: var(--dark-warn-dim);
+    --color-warn-line: var(--dark-warn-line);
+    --color-danger: var(--dark-danger);
+    --color-danger-hover: var(--dark-danger-hover);
+    --color-danger-dim: var(--dark-danger-dim);
+    --color-danger-line: var(--dark-danger-line);
+    --color-success: var(--dark-success);
+    --color-success-dim: var(--dark-success-dim);
+    --color-success-line: var(--dark-success-line);
+    --color-scroll-thumb: var(--dark-scroll-thumb);
+    --elevate-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --elevate-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.45);
+    --elevate-float: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 24px 48px -16px rgb(0 0 0 / 0.75);
+  }
 }
 
 @layer base {
   :root {
-    color-scheme: dark;
+    /* Light unless one of the dark selectors above applies. This drives the
+       browser's own scrollbars and form controls, not only our styles. */
+    color-scheme: light;
     /* Themes the browser's own controls — checkboxes, radios, progress — so
        they match without being rebuilt and losing their native semantics. */
     accent-color: var(--color-primary);
