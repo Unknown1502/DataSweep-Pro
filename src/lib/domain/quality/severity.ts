@@ -56,3 +56,59 @@ export function overallScore(
   // stays informative rather than bottoming out.
   return Math.round(100 * Math.exp(-penalty / 60));
 }
+
+export interface SeverityExplanation {
+  readonly weight: number;
+  readonly reach: number;
+  readonly score: number;
+  readonly threshold: number;
+  readonly severity: Severity;
+  readonly sentence: string;
+}
+
+/**
+ * Show the arithmetic behind a severity, rather than asking to be trusted.
+ *
+ * This is what genuine explainability looks like for a rule-based analyzer: the
+ * inputs that fired the rule and the calculation that graded it. It is
+ * deliberately not a narrative about "alternatives considered" — an analyzer
+ * evaluates one rule and does not deliberate, so writing that would be
+ * describing reasoning that never happened.
+ */
+export function explainSeverity(type: IssueType, ratio: number): SeverityExplanation {
+  const severity = scoreSeverity(type, ratio);
+
+  if (type === 'injected_content') {
+    return {
+      weight: BASE_WEIGHT[type],
+      reach: ratio,
+      score: 1,
+      threshold: 0,
+      severity,
+      sentence:
+        'Rated high regardless of how few rows are affected: one row is enough to attempt a hijack.',
+    };
+  }
+
+  const weight = BASE_WEIGHT[type];
+  const reach = Math.sqrt(Math.min(Math.max(ratio, 0), 1));
+  const score = weight * reach;
+  const threshold = severity === 'high' ? 0.35 : severity === 'medium' ? 0.12 : 0;
+
+  const comparison =
+    severity === 'low'
+      ? `below the 0.12 medium threshold`
+      : `at or above the ${threshold} ${severity} threshold`;
+
+  return {
+    weight,
+    reach,
+    score,
+    threshold,
+    severity,
+    sentence:
+      `Severity ${severity}: issue weight ${weight} multiplied by reach ` +
+      `sqrt(${(ratio * 100).toFixed(1)}%) = ${reach.toFixed(3)}, giving ${score.toFixed(3)}, ` +
+      `which is ${comparison}.`,
+  };
+}

@@ -63,7 +63,7 @@ Open the app, then ask your client to call `list_datasets`.
 
 ## The tools
 
-Fourteen tools, all registered on `document.modelContext`. The **Tool inspector**
+Fifteen tools, all registered on `document.modelContext`. The **Tool inspector**
 button in the app shows each one's live JSON Schema — the same object that was
 registered, so what you inspect cannot drift from what an agent is offered.
 
@@ -77,6 +77,7 @@ registered, so what you inspect cannot drift from what an agent is offered.
 | `generate_impact_report` | read |
 | `export_transformation_pipeline` | read |
 | `evaluate_quality_rules` | read |
+| `compare_checkpoints` | read |
 | `create_quality_rule` | writes a rule, not your data |
 | `apply_cleaning_transformations` | write, gated |
 | `execute_cleaning_pipeline` | write, gated |
@@ -151,6 +152,29 @@ your data, in order.
 
 ---
 
+## Seeing what changed, and why
+
+`compare_checkpoints` diffs two versions at row level. The wrinkle it handles:
+transformations edit values **in place**, so a naive set difference reports every
+edited row twice — once removed, once added. That reads as "you deleted 18 rows
+and added 18 different ones", which is true and useless.
+
+So rows are matched on a key column, auto-detected by checking uniqueness in
+*both* versions. Where no column qualifies, the report says so and returns null
+for the modified count rather than presenting the misleading number as an answer.
+
+Every finding also carries a **"why?"** toggle showing the computation behind it:
+what was measured, and the arithmetic that graded the severity —
+*"issue weight 0.65 × reach sqrt(23.8%) = 0.488, giving 0.317, at or above the
+0.12 medium threshold."* Checkable, rather than asking to be trusted. It is
+deliberately not a narrative about alternatives considered: a rule-based analyzer
+evaluates one rule and does not deliberate, and writing otherwise would describe
+reasoning that never happened.
+
+Press `?` for keyboard shortcuts. Undo and redo are `Ctrl/Cmd+Z` and
+`Ctrl/Cmd+Shift+Z`, bound to React state rather than to synthesised clicks on
+buttons that will move.
+
 ## Who did what
 
 Every tool call records its actor — you, the guided demo, Claude, or an external
@@ -204,7 +228,7 @@ npm run test:evals    # security behaviour
 npm run test:integration
 ```
 
-255 tests. The integration and eval suites run **real DuckDB-Wasm** through its
+268 tests. The integration and eval suites run **real DuckDB-Wasm** through its
 Node bindings — no mock database.
 
 The security evals assert behaviour rather than exceptions. `rejects.toThrow()`

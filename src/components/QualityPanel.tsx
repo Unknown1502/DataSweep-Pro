@@ -13,6 +13,12 @@ interface ToolIssue {
   affected_rows: number;
   total_rows: number;
   evidence: string | null;
+  reasoning?: {
+    measurement: string;
+    severity_calculation: string;
+    why_this_fix?: string;
+    why_no_fix?: string;
+  };
   suggested_fix: {
     operation: string;
     column: string | null;
@@ -42,6 +48,7 @@ export function QualityPanel() {
   const [report, setReport] = useState<ToolReport | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [applying, setApplying] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<{
     issue: ToolIssue;
     summary: string;
@@ -208,11 +215,47 @@ export function QualityPanel() {
                       {issue.column && (
                         <span className="font-mono text-[11px] text-now">{issue.column}</span>
                       )}
+                      {issue.reasoning && (
+                        <button
+                          onClick={() =>
+                            setExplaining(explaining === issue.id ? null : issue.id)
+                          }
+                          className="font-mono text-[10px] text-text-lo underline decoration-dotted underline-offset-2 hover:text-now"
+                          aria-expanded={explaining === issue.id}
+                        >
+                          {explaining === issue.id ? 'hide working' : 'why?'}
+                        </button>
+                      )}
                     </div>
 
                     <p className="mt-1 text-xs leading-relaxed text-text-hi">
                       {issue.description}
                     </p>
+
+                    {explaining === issue.id && issue.reasoning && (
+                      <dl className="mt-2 space-y-1.5 rounded-sm border border-ink-600 bg-ink-900 px-2.5 py-2">
+                        <div>
+                          <dt className="eyebrow">What was measured</dt>
+                          <dd className="mt-0.5 font-mono text-[10px] leading-relaxed text-text-mid">
+                            {issue.reasoning.measurement}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="eyebrow">How it was graded</dt>
+                          <dd className="mt-0.5 font-mono text-[10px] leading-relaxed text-text-mid">
+                            {issue.reasoning.severity_calculation}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="eyebrow">
+                            {issue.reasoning.why_no_fix ? 'Why no automatic fix' : 'Why this fix'}
+                          </dt>
+                          <dd className="mt-0.5 font-mono text-[10px] leading-relaxed text-text-mid">
+                            {issue.reasoning.why_no_fix ?? issue.reasoning.why_this_fix}
+                          </dd>
+                        </div>
+                      </dl>
+                    )}
 
                     {issue.evidence && (
                       <pre className="mt-2 overflow-x-auto rounded-sm border border-ink-600 bg-ink-900 px-2.5 py-1.5 font-mono text-[10px] leading-relaxed whitespace-pre-wrap text-text-mid">

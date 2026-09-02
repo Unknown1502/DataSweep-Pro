@@ -3,6 +3,7 @@ import { callAs, type Actor } from './guards';
 import { CORE_TOOLS } from './core-tools';
 import { ANALYSIS_TOOLS } from './analysis-tools';
 import { PIPELINE_TOOLS } from './pipeline-tools';
+import { COMPARE_TOOLS } from './compare-tool';
 import { RULE_TOOLS } from './rule-tools';
 import type { ToolDefinition } from './types';
 
@@ -16,7 +17,7 @@ export * from './guards';
  * component per entry, and the rules of hooks require that count to be
  * constant across renders.
  */
-export const ALL_TOOLS: readonly ToolDefinition[] = [...CORE_TOOLS, ...PIPELINE_TOOLS, ...ANALYSIS_TOOLS, ...RULE_TOOLS].map(
+export const ALL_TOOLS: readonly ToolDefinition[] = [...CORE_TOOLS, ...PIPELINE_TOOLS, ...ANALYSIS_TOOLS, ...RULE_TOOLS, ...COMPARE_TOOLS].map(
   (factory) => factory(getToolContext),
 );
 

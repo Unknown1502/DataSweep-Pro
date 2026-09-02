@@ -1,4 +1,5 @@
 import { analyzeQuality, type CheckName } from '../domain/quality';
+import { explainSeverity } from '../domain/quality/severity';
 import { quarantine } from '../domain/injection';
 import type { TransformSpec } from '../domain/transforms';
 import { dropTables, runChain, sampleBeforeAfter } from '../engine/apply';
@@ -204,6 +205,22 @@ export const detectDataQualityIssues: ToolFactory = (getContext): ToolDefinition
             description: issue.description,
             affected_rows: issue.affectedRows,
             total_rows: issue.totalRows,
+            // The computation behind the finding, so it can be checked rather
+            // than believed. Not a narrative — the measurement and the grading.
+            reasoning: {
+              measurement:
+                `${issue.affectedRows.toLocaleString()} of ${issue.totalRows.toLocaleString()} ` +
+                `rows (${(issue.ratio * 100).toFixed(1)}%) matched the ${issue.type} check` +
+                (issue.column ? ` on "${issue.column}"` : ''),
+              severity_calculation: explainSeverity(issue.type, issue.ratio).sentence,
+              ...(issue.suggestedFix
+                ? { why_this_fix: issue.suggestedFix.rationale }
+                : {
+                    why_no_fix:
+                      'No automatic fix is offered: there is no correct answer that can be ' +
+                      'applied without a judgement call, and guessing would risk silent corruption.',
+                  }),
+            },
             // Evidence is drawn from cell values, so it is fenced.
             evidence: issue.evidence.length > 0 ? quarantine(issue.evidence.join('\n')) : null,
             suggested_fix: issue.suggestedFix

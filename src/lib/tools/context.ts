@@ -27,6 +27,7 @@ const RATE_LIMITS: Record<string, number> = {
   generate_data_documentation: 10,
   create_quality_rule: 20,
   evaluate_quality_rules: 20,
+  compare_checkpoints: 20,
 };
 
 export const registry = new DatasetRegistry();

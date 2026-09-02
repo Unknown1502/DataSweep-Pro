@@ -1,17 +1,99 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RegisterTools } from './components/RegisterTools';
 import { TopBar } from './components/TopBar';
 import { LedgerRail } from './components/LedgerRail';
 import { Workspace } from './components/Workspace';
 import { AgentPanel } from './components/AgentPanel';
+import { ShortcutsHelp } from './components/ShortcutsHelp';
+import { useKeyboardShortcuts, type Shortcut } from './hooks/useKeyboardShortcuts';
 import { audit } from './lib/tools/context';
-import { useApp } from './store/app-store';
+import { callTool } from './lib/tools';
+import { useApp, useSelectedDataset } from './store/app-store';
 
 export function App() {
   const status = useApp((s) => s.status);
   const bootError = useApp((s) => s.bootError);
   const boot = useApp((s) => s.boot);
   const [agentOpen, setAgentOpen] = useState(true);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const dataset = useSelectedDataset();
+  const refresh = useApp((s) => s.refresh);
+  const setActionError = useApp((s) => s.setActionError);
+
+  /**
+   * Move the head pointer one step. Undo and redo are the same operation in
+   * opposite directions, because history is a list and the head is an index.
+   */
+  const step = useCallback(
+    async (delta: -1 | 1) => {
+      if (!dataset) return;
+      const target = dataset.history[dataset.headIndex + delta];
+      if (!target) return;
+
+      setActionError(null);
+      try {
+        const args = { dataset_id: dataset.id, checkpoint_id: target.id };
+        const preview = (await callTool('undo_to_checkpoint', args)) as {
+          confirmation_token: string;
+        };
+        await callTool('undo_to_checkpoint', {
+          ...args,
+          confirmation_token: preview.confirmation_token,
+        });
+        refresh();
+      } catch (error) {
+        setActionError(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [dataset, refresh, setActionError],
+  );
+
+  const shortcuts = useMemo<Shortcut[]>(
+    () => [
+      {
+        key: 'z',
+        meta: true,
+        shift: false,
+        label: 'Undo',
+        description: 'Step back one checkpoint',
+        enabled: !!dataset && dataset.headIndex > 0,
+        run: () => void step(-1),
+      },
+      {
+        key: 'z',
+        meta: true,
+        shift: true,
+        label: 'Redo',
+        description: 'Step forward again',
+        enabled: !!dataset && dataset.headIndex < dataset.history.length - 1,
+        run: () => void step(1),
+      },
+      {
+        key: 'a',
+        meta: true,
+        shift: true,
+        label: 'Agent panel',
+        description: 'Show or hide the agent',
+        run: () => setAgentOpen((open) => !open),
+      },
+      {
+        key: '?',
+        label: 'This list',
+        description: 'Show keyboard shortcuts',
+        run: () => setHelpOpen(true),
+      },
+      {
+        key: 'escape',
+        label: 'Dismiss',
+        description: 'Close the shortcut list',
+        run: () => setHelpOpen(false),
+      },
+    ],
+    [dataset, step],
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   useEffect(() => {
     void boot();
@@ -59,6 +141,8 @@ export function App() {
         </main>
         {agentOpen && status === 'ready' && <AgentPanel onClose={() => setAgentOpen(false)} />}
       </div>
+
+      {helpOpen && <ShortcutsHelp shortcuts={shortcuts} onClose={() => setHelpOpen(false)} />}
     </div>
   );
 }
