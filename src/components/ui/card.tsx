@@ -4,13 +4,16 @@ import { cn } from '../../lib/cn';
 /**
  * Surface hierarchy rather than borders everywhere: a card is a lighter plane,
  * with a hairline only where one plane genuinely meets another.
+ *
+ * `raised` adds a 1px lit top edge. On a dark UI that reads as elevation far
+ * more reliably than a drop shadow, which mostly dissolves into the ground.
  */
 export const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        'rounded-lg border border-line bg-surface-800',
+        'raised rounded-lg border border-line bg-surface-800',
         className,
       )}
       {...props}

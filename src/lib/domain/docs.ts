@@ -30,6 +30,15 @@ export interface DocsInput {
   readonly pipeline: Pipeline;
   /** Omitted from output when absent, so the doc is reproducible in tests. */
   readonly generatedAt?: string;
+  /**
+   * Whether the column dictionary carries real example values.
+   *
+   * Those examples are raw cell content. In the app they are the most useful
+   * column in the table; in anything that leaves the machine they are data
+   * exfiltration wearing a helpful hat. Default true for the in-app view,
+   * explicitly false for export.
+   */
+  readonly includeSamples?: boolean;
 }
 
 function pct(ratio: number): string {
@@ -83,8 +92,14 @@ export function generateDocumentation(input: DocsInput): string {
   // --- Column dictionary ---------------------------------------------------
   out.push('## Column dictionary');
   out.push('');
-  out.push('| Column | Detected type | Confidence | Missing | Distinct | Example values |');
-  out.push('|---|---|---|---|---|---|');
+  const withSamples = input.includeSamples !== false;
+
+  out.push(
+    withSamples
+      ? '| Column | Detected type | Confidence | Missing | Distinct | Example values |'
+      : '| Column | Detected type | Confidence | Missing | Distinct |',
+  );
+  out.push(withSamples ? '|---|---|---|---|---|---|' : '|---|---|---|---|---|');
 
   for (const profile of profiles) {
     const semantic = semanticsByColumn.get(profile.column);
@@ -94,11 +109,19 @@ export function generateDocumentation(input: DocsInput): string {
         ? 'ambiguous'
         : `${Math.round(semantic.confidence * 100)}%`
       : '—';
-    const samples = profile.samples.map(cell).join(', ') || '—';
-
-    out.push(
+    const row =
       `| \`${cell(profile.column)}\` | ${type} | ${confidence} | ` +
-        `${pct(profile.nullRate)} | ${profile.distinctCount.toLocaleString()} | ${samples} |`,
+      `${pct(profile.nullRate)} | ${profile.distinctCount.toLocaleString()} |`;
+
+    out.push(withSamples ? `${row} ${profile.samples.map(cell).join(', ') || '—'} |` : row);
+  }
+  out.push('');
+
+  if (!withSamples) {
+    out.push('');
+    out.push(
+      'Example values are omitted from this copy: it was generated for export, and sample ' +
+        'values are raw cell content.',
     );
   }
   out.push('');

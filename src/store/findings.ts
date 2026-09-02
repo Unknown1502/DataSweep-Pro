@@ -44,6 +44,16 @@ export interface ScanReport {
 interface FindingsState {
   /** Keyed by dataset id, so switching datasets does not show a stale report. */
   reports: Record<string, ScanReport>;
+  /**
+   * The score the first time this dataset was scanned, kept so the gauge can
+   * show movement rather than only a destination.
+   *
+   * Written once per dataset and never overwritten — the point of a baseline is
+   * that it does not move. It is labelled "at first scan" wherever it appears,
+   * because that is exactly what it is: for a dataset scanned on load it is the
+   * pre-cleaning score, and claiming more than that would be a guess.
+   */
+  baselines: Record<string, number>;
   scanning: string | null;
   error: string | null;
   scan: (datasetId: string) => Promise<void>;
@@ -59,6 +69,7 @@ interface FindingsState {
  */
 export const useFindings = create<FindingsState>((set, get) => ({
   reports: {},
+  baselines: {},
   scanning: null,
   error: null,
 
@@ -69,7 +80,13 @@ export const useFindings = create<FindingsState>((set, get) => ({
       const report = (await callTool('detect_data_quality_issues', {
         dataset_id: datasetId,
       })) as ScanReport;
-      set((state) => ({ reports: { ...state.reports, [datasetId]: report } }));
+      set((state) => ({
+        reports: { ...state.reports, [datasetId]: report },
+        baselines:
+          datasetId in state.baselines
+            ? state.baselines
+            : { ...state.baselines, [datasetId]: report.quality_score },
+      }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });
     } finally {
@@ -77,6 +94,8 @@ export const useFindings = create<FindingsState>((set, get) => ({
     }
   },
 
+  // Drops the report so it is re-measured. The baseline deliberately survives:
+  // it is what the new score is being compared against.
   invalidate: (datasetId) =>
     set((state) => {
       const next = { ...state.reports };

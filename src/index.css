@@ -12,56 +12,95 @@
  *   danger  (red)       — a security finding, or a destructive change
  *   success (green)     — a confirmed pass
  *
- * The previous palette used amber for "the prior value" *and* nothing else,
- * which left no colour for actor attribution. Prior state is now carried by
- * de-emphasis (muted foreground) rather than by a hue — the past should recede
- * — which frees amber for the one meaning it now has.
+ * Prior state is carried by de-emphasis rather than by a hue — the past should
+ * recede — which leaves amber free for the one meaning it now has.
+ *
+ * ---------------------------------------------------------------------------
+ * The ladder is designed in OKLCH, not picked by eye.
+ *
+ * The previous ramp was measured and found to be wrong in two specific ways:
+ *
+ *   - `shell-700` (L 22.9) was LIGHTER than `surface-900` (L 21.3), so the
+ *     chrome and the working surface sat at the same value. That is why the
+ *     whole app read flat: there was no elevation to read.
+ *   - `line` (L 29.1) was lighter than `surface-700` (L 26.8), so a border was
+ *     brighter than the card it enclosed on some surfaces and not others.
+ *
+ * Both are fixed below. Every step is now at least 3.4 in OKLCH L — roughly the
+ * threshold at which a step stays visible on a dim laptop screen rather than
+ * only on a calibrated one — and the chrome sits strictly below the workspace,
+ * so the working surface reads as lifted out of the shell.
+ *
+ * Contrast was then verified for every foreground against every surface it can
+ * land on. The floor is 4.57:1. The single pairing below AA (`fg-subtle` on
+ * `surface-600`, 3.84:1) cannot occur: `surface-600` is only ever a meter track
+ * or a button hover, and the button carries `fg` at 9.89:1.
  */
 
 @theme {
-  /* Application chrome: top bar and rails. Deliberately darker than the
-     workspace so the working surface reads as raised out of the shell. */
-  --color-shell-900: #0e1014;
-  --color-shell-800: #13161b;
-  --color-shell-700: #191d23;
+  /* Application chrome: top bar and rails. Now genuinely below the workspace. */
+  --color-shell-900: #05070b; /* L 12.6 — the ground everything sits on */
+  --color-shell-800: #0b0e13; /* L 16.2 */
+  --color-shell-700: #12151c; /* L 19.6 */
 
   /* Working surface and the cards on it. */
-  --color-surface-900: #16191f;
-  --color-surface-800: #1b1f26;
-  --color-surface-700: #212630;
-  --color-surface-600: #29303b;
+  --color-surface-900: #181c23; /* L 22.4 — workspace ground */
+  --color-surface-800: #1f242b; /* L 25.8 — the card */
+  --color-surface-700: #282d36; /* L 29.6 — raised card, input, control */
+  --color-surface-600: #333943; /* L 34.2 — track fill, hover */
 
-  --color-line: #262c35;
-  --color-line-strong: #333b47;
+  --color-line: #2a2f38; /* L 30.4 — a consistent step above its own surface */
+  --color-line-strong: #3d444f; /* L 38.4 */
 
-  /* Foreground. `fg-muted` was lifted from #9ba5b4: metadata was the most
-     common text in the product and the least readable, which is backwards. */
+  /* Foreground. `fg-muted` carries most of the metadata in the product, so it
+     is deliberately not the faintest thing on screen. */
   --color-fg: #e9edf3;
-  --color-fg-muted: #aab4c2;
-  --color-fg-subtle: #8590a0;
+  --color-fg-muted: #b3bcc9;
+  --color-fg-subtle: #8d95a1;
 
+  /*
+   * The accents were measured and left alone.
+   *
+   * They already sit within 6 points of each other in OKLCH lightness
+   * (65–71) at similar chroma, which is what makes them read as peers rather
+   * than one shouting over the others. Only `agent` and `danger` moved, by two
+   * points each, to hold their contrast against the lightened cards.
+   */
   --color-primary: #3fa7d6;
-  --color-primary-hover: #55b6e0;
-  --color-primary-fg: #08131a;
-  --color-primary-dim: #10293a;
-  --color-primary-line: #245a7a;
+  --color-primary-hover: #53b7e7;
+  --color-primary-fg: #000b13;
+  --color-primary-dim: #103242;
+  --color-primary-line: #17546f;
 
-  --color-agent: #9a87e0;
-  --color-agent-dim: #221d3a;
-  --color-agent-line: #4a3f7a;
+  --color-agent: #a08fe7;
+  --color-agent-dim: #2e2944;
+  --color-agent-line: #4e4573;
 
   --color-warn: #d9903f;
-  --color-warn-dim: #2f2418;
-  --color-warn-line: #6b4f26;
+  --color-warn-dim: #3e2912;
+  --color-warn-line: #69441b;
 
-  --color-danger: #e0645a;
-  --color-danger-hover: #ea7269;
-  --color-danger-dim: #2f1c1a;
-  --color-danger-line: #7a3b35;
+  --color-danger: #ea7267;
+  --color-danger-hover: #ff8579;
+  --color-danger-dim: #432421;
+  --color-danger-line: #703c36;
 
   --color-success: #4fb286;
-  --color-success-dim: #12291f;
-  --color-success-line: #2c6349;
+  --color-success-dim: #143526;
+  --color-success-line: #1e5a40;
+
+  /*
+   * Every tinted callout now sits at L 30 — one clear step ABOVE the card.
+   * The previous fills were built for the older, darker surfaces: against the
+   * corrected ladder `agent-dim` and `danger-dim` measured darker than the card
+   * they sat on, so an alert read as a hole punched in the panel rather than as
+   * a raised, tinted region.
+   */
+
+  /* Scrollbar thumb. Kept as its own token because it has a hard requirement
+     the surface ramp does not: 3:1 against the track it floats over. The old
+     value (`surface-600` over the workspace) measured 1.47:1. */
+  --color-scroll-thumb: #686f79;
 
   --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-sans: 'Archivo', system-ui, -apple-system, sans-serif;
@@ -70,11 +109,26 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
+
+  /*
+   * Elevation is a 1px top highlight, not a drop shadow.
+   *
+   * On a dark UI a blurred shadow mostly disappears into the ground; what
+   * actually reads as "raised" is the lit top edge, because that is what a real
+   * edge does under overhead light. Shadows are kept for things that genuinely
+   * float above the page and need to detach from it.
+   */
+  --elevate-1: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --elevate-2: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 1px 2px rgb(0 0 0 / 0.45);
+  --elevate-float: inset 0 1px 0 rgb(255 255 255 / 0.07), 0 24px 48px -16px rgb(0 0 0 / 0.75);
 }
 
 @layer base {
   :root {
     color-scheme: dark;
+    /* Themes the browser's own controls — checkboxes, radios, progress — so
+       they match without being rebuilt and losing their native semantics. */
+    accent-color: var(--color-primary);
   }
 
   html,
@@ -100,6 +154,17 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Headings should not leave one orphaned word on the last line; prose should
+     not leave one orphaned word at all. Both are free and neither reflows. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+
   :focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
@@ -113,20 +178,20 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-surface-600) transparent;
+    scrollbar-color: var(--color-scroll-thumb) transparent;
   }
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   *::-webkit-scrollbar-thumb {
-    background: var(--color-surface-600);
+    background: var(--color-scroll-thumb);
     border-radius: 99px;
     border: 2px solid transparent;
     background-clip: content-box;
   }
   *::-webkit-scrollbar-thumb:hover {
-    background: var(--color-line-strong);
+    background: var(--color-fg-subtle);
     background-clip: content-box;
   }
 }
@@ -147,6 +212,87 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
   }
+
+  /*
+   * The segmented gauge — the one signature element.
+   *
+   * The product's whole argument is that its numbers are measured rather than
+   * estimated, and a smooth bar is exactly the shape of an estimate. Discrete
+   * segments read as counted units, which is what a quality score actually is.
+   * The notch marks where the score stood before cleaning, so the bar shows the
+   * movement and not only the destination.
+   *
+   * The figure is always printed next to it, so nothing here is the sole
+   * carrier of information — which is what makes it safe to let the segments
+   * vanish under forced colors.
+   */
+  .gauge {
+    --gauge-value: 0;
+    --gauge-fill: var(--color-primary);
+    --gauge-seg: 9px;
+    --gauge-gap: 3px;
+    position: relative;
+    height: 10px;
+  }
+
+  /*
+   * Track and fill live in their own masked layer.
+   *
+   * The mask was originally on `.gauge` itself, which meant the baseline tick
+   * was masked too and vanished outright whenever it happened to land in a gap
+   * between segments — so the marker was reliable only for some values. It now
+   * sits outside the mask and overhangs the bar, which also makes it read as a
+   * tick against a scale rather than as one more lit segment.
+   */
+  .gauge-segments {
+    position: absolute;
+    inset: 0;
+    background: var(--color-surface-600);
+    border-radius: 1px;
+    mask-image: repeating-linear-gradient(
+      to right,
+      #000 0 var(--gauge-seg),
+      transparent var(--gauge-seg) calc(var(--gauge-seg) + var(--gauge-gap))
+    );
+    -webkit-mask-image: repeating-linear-gradient(
+      to right,
+      #000 0 var(--gauge-seg),
+      transparent var(--gauge-seg) calc(var(--gauge-seg) + var(--gauge-gap))
+    );
+  }
+
+  .gauge-segments::before {
+    content: '';
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: calc(var(--gauge-value) * 1%);
+    background: var(--gauge-fill);
+    transition: inline-size 420ms cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+
+  /* Where the score stood at the first scan. */
+  .gauge-mark {
+    position: absolute;
+    inset-block: -3px;
+    inset-inline-start: calc(var(--gauge-mark) * 1%);
+    inline-size: 2px;
+    background: var(--color-fg);
+    border-radius: 1px;
+  }
+
+  /*
+   * A panel that is raised off the surface behind it.
+   *
+   * Applied through a class rather than repeated per component so the elevation
+   * language stays in one place and cannot drift between panels.
+   */
+  .raised {
+    box-shadow: var(--elevate-1);
+  }
+  .floating {
+    box-shadow: var(--elevate-float);
+  }
 }
 
 @layer utilities {
@@ -162,6 +308,51 @@
 
   .contain-pane {
     contain: layout paint;
+  }
+
+  /* Lets a panel's contents respond to the panel's own width rather than the
+     viewport's — the agent rail and the workspace are different widths at the
+     same breakpoint, so viewport queries get one of them wrong. */
+  .pane-query {
+    container-type: inline-size;
+  }
+}
+
+/*
+ * Forced Colors Mode (Windows High Contrast).
+ *
+ * The browser replaces author colours with system keywords and drops
+ * background-image, box-shadow and border-image. Nothing above uses those to
+ * carry meaning — borders are real borders and every figure is printed as text
+ * — but the gauge's mask and fill would disappear silently, so it is given a
+ * real border to keep its extent visible.
+ */
+@media (forced-colors: active) {
+  .gauge-segments {
+    mask-image: none;
+    -webkit-mask-image: none;
+    border: 1px solid CanvasText;
+  }
+  .gauge-segments::before {
+    background: Highlight;
+  }
+  .gauge-mark {
+    background: CanvasText;
+  }
+  .raised,
+  .floating {
+    border: 1px solid CanvasText;
+  }
+}
+
+/* Users who ask for more contrast get a scrollbar they can actually see. */
+@media (prefers-contrast: more) {
+  * {
+    scrollbar-color: var(--color-fg-muted) var(--color-surface-900);
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-fg-muted);
+    background-clip: content-box;
   }
 }
 

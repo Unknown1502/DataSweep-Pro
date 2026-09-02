@@ -1,4 +1,4 @@
-import { Bot, Plug, User } from 'lucide-react';
+import { Bot, Plug, Sparkles, User } from 'lucide-react';
 import type { Actor } from '../../lib/tools/guards';
 import { ACTOR_LABELS } from '../../lib/tools/guards';
 import { Hint } from '../ui/misc';
@@ -14,6 +14,7 @@ const ACTOR_STYLE: Record<Actor, { icon: typeof Bot; className: string }> = {
   human: { icon: User, className: 'border-primary-line bg-primary-dim text-primary' },
   'demo-agent': { icon: Bot, className: 'border-agent-line bg-agent-dim text-agent' },
   'claude-agent': { icon: Bot, className: 'border-agent-line bg-agent-dim text-agent' },
+  'model-agent': { icon: Sparkles, className: 'border-agent-line bg-agent-dim text-agent' },
   'external-mcp': { icon: Plug, className: 'border-warn-line bg-warn-dim text-warn' },
 };
 

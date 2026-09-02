@@ -111,6 +111,7 @@ export const detectColumnSemanticsTool: ToolFactory = (getContext): ToolDefiniti
 const docsSchema = z.object({
   dataset_id: z.string().max(64),
   include_timestamp: z.boolean().default(false),
+  include_samples: z.boolean().default(true),
 });
 
 export const generateDataDocumentation: ToolFactory = (getContext): ToolDefinition => ({
@@ -128,6 +129,13 @@ export const generateDataDocumentation: ToolFactory = (getContext): ToolDefiniti
         type: 'boolean',
         default: false,
         description: 'Stamp the generation time. Off by default so output is reproducible.',
+      },
+      include_samples: {
+        type: 'boolean',
+        default: true,
+        description:
+          'Include real example values in the column dictionary. Set false when the document ' +
+          'will leave this machine — sample values are raw cell content.',
       },
     },
     required: ['dataset_id'],
@@ -165,6 +173,7 @@ export const generateDataDocumentation: ToolFactory = (getContext): ToolDefiniti
           issues: report.issues,
           qualityScore: report.score,
           pipeline: pipelineFromDataset(dataset),
+          includeSamples: input.include_samples,
           ...(input.include_timestamp ? { generatedAt: new Date().toISOString() } : {}),
         });
 
@@ -172,6 +181,7 @@ export const generateDataDocumentation: ToolFactory = (getContext): ToolDefiniti
           dataset_id: dataset.id,
           format: 'markdown',
           columns_documented: profiles.length,
+          includes_sample_values: input.include_samples,
           // Contains real cell values as examples, so it is fenced.
           documentation: quarantine(markdown),
         };

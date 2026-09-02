@@ -142,25 +142,51 @@ export const Select = React.forwardRef<
 ));
 Select.displayName = 'Select';
 
-// --- Meter -------------------------------------------------------------------
+// --- Gauge -------------------------------------------------------------------
 
-export function Meter({
+/**
+ * The segmented gauge.
+ *
+ * A smooth bar is the shape of an estimate, and this product's whole argument
+ * is that its figures are measured. Discrete segments read as counted units,
+ * which is what a quality score out of 100 actually is.
+ *
+ * `baseline` marks where the score stood at the first scan, so the bar shows
+ * the movement rather than only where it landed. It is omitted when there is
+ * nothing real to mark.
+ *
+ * The number is always printed alongside, so the gauge is never the sole
+ * carrier of the value — which is what lets its segments disappear safely under
+ * forced colors.
+ */
+export function Gauge({
   value,
   max = 100,
   tone = 'primary',
+  baseline,
   className,
   label,
 }: {
   value: number;
   max?: number;
   tone?: 'primary' | 'success' | 'warn' | 'danger';
+  /** Where this figure started, if it is known. */
+  baseline?: number;
   className?: string;
   label?: string;
 }) {
-  const pct = max === 0 ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
-  const fill = { primary: 'bg-primary', success: 'bg-success', warn: 'bg-warn', danger: 'bg-danger' }[
-    tone
-  ];
+  const clamp = (n: number) => Math.min(100, Math.max(0, (n / max) * 100));
+  const pct = max === 0 ? 0 : clamp(value);
+  const fill = {
+    primary: 'var(--color-primary)',
+    success: 'var(--color-success)',
+    warn: 'var(--color-warn)',
+    danger: 'var(--color-danger)',
+  }[tone];
+
+  // Only set --gauge-mark when a baseline exists and actually differs; the
+  // marker's CSS rule keys off the property being present at all.
+  const showMark = baseline !== undefined && Math.round(clamp(baseline)) !== Math.round(pct);
 
   return (
     <div
@@ -169,28 +195,43 @@ export function Meter({
       aria-valuemin={0}
       aria-valuemax={max}
       aria-label={label}
-      className={cn('h-1.5 w-full overflow-hidden rounded-full bg-surface-600', className)}
+      className={cn('gauge', className)}
+      style={{ '--gauge-value': pct, '--gauge-fill': fill } as React.CSSProperties}
     >
-      <div className={cn('h-full rounded-full transition-all', fill)} style={{ width: `${pct}%` }} />
+      <span className="gauge-segments" />
+      {showMark && (
+        <span
+          className="gauge-mark"
+          style={{ '--gauge-mark': clamp(baseline) } as React.CSSProperties}
+        />
+      )}
     </div>
   );
 }
 
 // --- Stat --------------------------------------------------------------------
 
-/** A labelled number. Used wherever the product reports a measured figure. */
+/**
+ * A labelled number. Used wherever the product reports a measured figure.
+ *
+ * `hero` is for the one figure a panel is actually about. Without it every
+ * number on the Overview carried identical weight, so the quality score — the
+ * thing the panel exists to report — had to be found rather than seen.
+ */
 export function Stat({
   label,
   value,
   suffix,
   tone,
   hint,
+  size = 'default',
 }: {
   label: string;
   value: string | number;
   suffix?: string;
   tone?: 'default' | 'success' | 'warn' | 'danger';
   hint?: string;
+  size?: 'default' | 'hero';
 }) {
   const color =
     tone === 'success'
@@ -206,9 +247,24 @@ export function Stat({
       <div className="eyebrow" title={hint}>
         {label}
       </div>
-      <div className={cn('mt-0.5 font-display text-[20px] leading-none font-bold tabular-nums', color)}>
+      <div
+        className={cn(
+          'mt-0.5 font-display leading-none font-bold tabular-nums',
+          size === 'hero' ? 'text-[40px] tracking-[-0.02em]' : 'text-[20px]',
+          color,
+        )}
+      >
         {value}
-        {suffix && <span className="ml-0.5 text-[12px] font-normal text-fg-subtle">{suffix}</span>}
+        {suffix && (
+          <span
+            className={cn(
+              'ml-0.5 font-normal text-fg-subtle',
+              size === 'hero' ? 'text-[15px]' : 'text-[12px]',
+            )}
+          >
+            {suffix}
+          </span>
+        )}
       </div>
     </div>
   );

@@ -55,10 +55,20 @@ export function pipelineFromDataset(dataset: Dataset, name?: string): Pipeline {
     }
   }
 
+  // The time the last approved step ran, not the time this was exported.
+  //
+  // Both are truthful, but the wall clock made every export byte-different from
+  // the one before it: the same pipeline exported twice produced two files that
+  // differed only in a header comment. That defeats content hashing, and it
+  // quietly contradicts the "reproducible" claim the export panel makes. The
+  // checkpoint time is also the more useful figure — it says when the work
+  // happened rather than when it was copied.
+  const head = dataset.history[dataset.headIndex] ?? dataset.history[0];
+
   return {
     name: name ?? (dataset.name.replace(/\.[^.]+$/, '') || 'pipeline'),
     version: PIPELINE_VERSION,
-    createdAt: new Date().toISOString(),
+    createdAt: head?.createdAt ?? new Date(0).toISOString(),
     requiredColumns: dataset.history[0]?.columns ?? [],
     steps,
   };

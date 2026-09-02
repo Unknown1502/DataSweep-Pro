@@ -57,6 +57,29 @@ export function RulesPanel() {
 
   const head = dataset?.history[dataset.headIndex];
 
+  /**
+   * What the chosen rule type still needs, phrased for the person filling the
+   * form.
+   *
+   * This used to be checked only by the engine, which meant "Add rule" was
+   * clickable in states where it could not possibly succeed, and the refusal
+   * came back as an internal message ("An in_set rule needs a non-empty
+   * \"values\" list") rendered in a page-level alert, away from the field that
+   * caused it. A control that cannot succeed should not invite the click.
+   */
+  const missing: string | null =
+    type === 'regex' && !pattern.trim()
+      ? 'Enter a pattern to match.'
+      : type === 'range' && !min.trim() && !max.trim()
+        ? 'Enter a minimum, a maximum, or both.'
+        : type === 'in_set' &&
+            values
+              .split(',')
+              .map((v) => v.trim())
+              .filter(Boolean).length === 0
+          ? 'List the allowed values, separated by commas.'
+          : null;
+
   const evaluate = useCallback(async () => {
     if (!dataset) return;
     setBusy(true);
@@ -185,6 +208,7 @@ export function RulesPanel() {
                   onChange={(e) => setPattern(e.target.value)}
                   placeholder="^[A-Z]{2}-[0-9]+$"
                   className="font-mono"
+                  aria-describedby={missing ? 'rule-missing' : undefined}
                 />
               </div>
             )}
@@ -221,15 +245,31 @@ export function RulesPanel() {
                   onChange={(e) => setValues(e.target.value)}
                   placeholder="shipped, pending, cancelled"
                   className="font-mono"
+                  aria-describedby={missing ? 'rule-missing' : undefined}
                 />
               </div>
             )}
 
-            <Button variant="primary" onClick={() => void create()} disabled={busy}>
+            <Button
+              variant="primary"
+              onClick={() => void create()}
+              disabled={busy || missing !== null}
+              title={missing ?? undefined}
+            >
               <Plus />
               Add rule
             </Button>
           </div>
+
+          {/* Sits under the form it belongs to, not in a page-level banner —
+              and reads as a requirement rather than an error, because the form
+              resets after a successful save and a warning colour there would
+              flag the success as a failure. */}
+          {missing && (
+            <p id="rule-missing" className="mt-2 text-[12px] text-fg-subtle">
+              {missing}
+            </p>
+          )}
 
           <p className="mt-3 text-[12px] leading-relaxed text-fg-subtle">
             {TYPES.find((t) => t.id === type)?.hint}. There is deliberately no free-form SQL rule

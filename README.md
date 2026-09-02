@@ -217,6 +217,51 @@ it: [`tests/integration/pipeline-tools.test.ts`](tests/integration/pipeline-tool
 runs the exported SQL verbatim against the original table and asserts the rows
 come back identical.
 
+Every export is byte-reproducible. The header records when the last approved step
+ran, not when you pressed the button, so exporting the same pipeline twice
+produces the same file — which is what makes content hashing meaningful.
+
+### Opening a pull request
+
+The **Exports** tab can publish the whole set — SQL, pandas, dbt, expectation
+suite, data dictionary and transformation ledger — to a branch and a pull request,
+where colleagues review it as a diff.
+
+This is the only place in the app where anything leaves the machine, so it is the
+most tightly gated thing in it:
+
+- **No tool can reach it.** The tool surface stays at fifteen and none of them
+  takes a destination, a URL or a credential. An agent can prepare everything an
+  export needs and still cannot start one; the button is the only entry point.
+- **The payload is fixed before it is approved.** The files are assembled and
+  hashed, then shown in full — every path, byte count and SHA-256 — and the
+  approval is bound to that manifest hash *and* the destination. Change either
+  and the approval no longer applies. It is single-use and expires in five
+  minutes, the same shape of control as the transformation gate one level out.
+- **What is not sent is stated as plainly as what is.** No raw rows, no
+  quarantined cells, and the data dictionary is regenerated without its
+  example-values column — because those examples are real cell content, and a
+  document that is fine on your screen is not fine in someone's repository.
+- **A retry cannot open a second pull request.** Receipts are cached against the
+  manifest hash, so a network failure whose outcome is unknown resolves to the
+  original PR rather than a duplicate.
+
+**Demo mode is the default** and makes no network request at all: it assembles
+and hashes everything, shows the full preflight, and stops. Set
+`VITE_GITHUB_EXPORT_MODE=live` to enable the token field.
+
+There is no `GITHUB_TOKEN` in this repository and no server holding one, because
+there is no server. The brief this was built from specified a server-side route,
+which is right when an application owns the credential — but giving this one a
+server would route your artifacts through infrastructure we operate, which is
+exactly the claim the product makes it does not do. `api.github.com` accepts an
+`Authorization` header from a browser, so the call is made directly with a
+fine-grained token **you** own, scoped at creation to the repositories you pick.
+That is a tighter permission boundary than any allow-list this app could
+maintain, and nobody else ever holds it. It lives in a module variable for the
+tab: never storage, never a tool argument, never a URL, never a log, and gone on
+reload.
+
 ---
 
 ## Tests
@@ -228,7 +273,7 @@ npm run test:evals    # security behaviour
 npm run test:integration
 ```
 
-268 tests. The integration and eval suites run **real DuckDB-Wasm** through its
+341 tests. The integration and eval suites run **real DuckDB-Wasm** through its
 Node bindings — no mock database.
 
 The security evals assert behaviour rather than exceptions. `rejects.toThrow()`
@@ -265,9 +310,39 @@ Colour is assigned by meaning and nothing else:
 Status is never carried by colour alone — each actor has its own icon, the
 active tab has a rule as well as a tint, and rule results show a pass/fail glyph.
 
+The surface ramp is designed in OKLCH and measured, not picked by eye. The
+earlier one had two defects the numbers made obvious: `shell-700` was *lighter*
+than `surface-900`, so the chrome and the working surface sat at the same value
+and the whole app read flat; and `line` was lighter than `surface-700`, so a
+border was brighter than the card it enclosed on some surfaces but not others.
+Every step is now at least 3.4 in OKLCH lightness — roughly where a step stays
+visible on a dim laptop screen rather than only on a calibrated one — and the
+chrome sits strictly below the workspace, so the working surface reads as lifted.
+
+The five accent hues were measured too, and left alone: they already sit within
+six points of each other in lightness at similar chroma, which is what makes
+them read as peers rather than one shouting over the others. Only two moved, by
+two points, to hold contrast against the lightened cards.
+
+Contrast was then checked for every foreground against every surface it can land
+on. The floor is 4.57:1. Elevation is a 1px lit top edge rather than a drop
+shadow, because on a dark ground a blurred shadow mostly dissolves into it;
+shadows are kept for things that genuinely float, like dialogs.
+
+The one signature element is the **segmented quality gauge**. A smooth bar is the
+shape of an estimate, and this product's argument is that its figures are
+measured — discrete segments read as counted units, which is what a score out of
+100 is. A tick marks where the score stood at the first scan, so the bar shows
+the movement and not only the destination. The number is always printed beside
+it, so the gauge is never the sole carrier of the value.
+
 Components are built on Radix primitives in `src/components/ui/`, wired to the
 project's own tokens rather than a second parallel palette. Dialogs trap focus,
-are labelled, close on Escape, lock background scroll and restore focus.
+are labelled, close on Escape, lock background scroll and restore focus. The
+page sets `accent-color` so the browser's own controls are themed without being
+rebuilt and losing their native semantics, and defines system-colour fallbacks
+under `forced-colors` so nothing conveyed by a background survives only as
+decoration.
 
 The layout works down to a 390px phone: navigation becomes a drawer and agent
 activity a full-screen overlay, closed by default so a small screen lands on the
@@ -301,6 +376,10 @@ Stated plainly, because a tool that hides its edges is harder to trust:
   we do not set them, so `selectBundle` picks the `eh` bundle. Expected, not a
   misconfiguration.
 - **The scripted demo agent is not a language model.** It follows a fixed plan.
+- **GitHub export is browser-to-GitHub, with your token.** There is no server to
+  hold one. That is a deliberate trade: no third party sees your artifacts, but
+  the token is only as scoped as you make it. Use a fine-grained token limited to
+  the one repository.
 - **Sorting a column of European-format numbers is wrong until you parse it.**
   `1.290,50` strips to 1.29 and sorts low. That is honest rather than hidden:
   the app has not been told that column is European yet, and `parse_numbers`

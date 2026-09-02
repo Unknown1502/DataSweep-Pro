@@ -63,7 +63,9 @@ export const DialogContent = React.forwardRef<
         // Declaring aria-modal closes that gap whichever mechanism Radix uses.
         aria-modal="true"
         className={cn(
-          'fixed z-50 flex flex-col border-line bg-surface-800 shadow-2xl outline-none',
+          // `floating` rather than a generic shadow: this one genuinely sits
+          // above the page and has to detach from it.
+          'floating fixed z-50 flex flex-col border-line bg-surface-800 outline-none',
           SIDE_CLASSES[side],
           className,
         )}

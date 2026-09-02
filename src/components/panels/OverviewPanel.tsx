@@ -5,7 +5,7 @@ import { useFindings } from '../../store/findings';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Alert, Meter, Skeleton, Stat } from '../ui/misc';
+import { Alert, Gauge, Skeleton, Stat } from '../ui/misc';
 import { ActorBadge } from './ActorBadge';
 import { ConcurrencyCard } from './ConcurrencyCard';
 
@@ -13,12 +13,13 @@ export function OverviewPanel() {
   const dataset = useSelectedDataset();
   const activity = useApp((s) => s.activity);
   const setView = useApp((s) => s.setView);
-  const { reports, scanning } = useFindings();
+  const { reports, baselines, scanning } = useFindings();
 
   if (!dataset) return null;
 
   const head = dataset.history[dataset.headIndex];
   const report = reports[dataset.id];
+  const baseline = baselines[dataset.id];
   const busy = scanning === dataset.id;
 
   const counts = { high: 0, medium: 0, low: 0 };
@@ -49,11 +50,15 @@ export function OverviewPanel() {
             ) : (
               <>
                 <div className="flex flex-wrap items-end gap-x-8 gap-y-3">
+                  {/* The headline figure, sized like one. Everything beside it
+                      is context for this number, so it should not have to
+                      compete with them at the same weight. */}
                   <Stat
                     label="Quality"
                     value={report ? report.quality_score : '—'}
                     suffix={report ? '/100' : undefined}
                     tone={scoreTone}
+                    size="hero"
                   />
                   <Stat label="Rows" value={(head?.rowCount ?? 0).toLocaleString()} />
                   <Stat label="Columns" value={head?.columns.length ?? 0} />
@@ -76,11 +81,19 @@ export function OverviewPanel() {
 
                 {report && (
                   <div className="mt-4">
-                    <Meter
+                    <Gauge
                       value={report.quality_score}
+                      baseline={baseline}
                       tone={scoreTone === 'default' ? 'primary' : scoreTone}
                       label={`Quality score ${report.quality_score} of 100`}
                     />
+                    {baseline !== undefined && baseline !== report.quality_score && (
+                      <p className="mt-1.5 font-mono text-[11px] text-fg-subtle tabular-nums">
+                        {report.quality_score > baseline ? '+' : ''}
+                        {report.quality_score - baseline} since first scan
+                        <span className="text-fg-subtle/70"> · marked on the gauge</span>
+                      </p>
+                    )}
                   </div>
                 )}
               </>

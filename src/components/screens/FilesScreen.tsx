@@ -4,6 +4,7 @@ import {
   ArrowRight,
   FileSpreadsheet,
   ShieldAlert,
+  Trash2,
   Upload,
 } from 'lucide-react';
 import { cn } from '../../lib/cn';
@@ -12,7 +13,9 @@ import { useApp } from '../../store/app-store';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Dialog, DialogContent } from '../ui/dialog';
 import { Alert } from '../ui/misc';
+import type { Dataset } from '../../lib/engine/registry';
 
 /**
  * The workspace hub.
@@ -26,6 +29,12 @@ export function FilesScreen() {
   const loadSample = useApp((s) => s.loadSample);
   const datasets = useApp((s) => s.datasets);
   const select = useApp((s) => s.select);
+  const removeDataset = useApp((s) => s.removeDataset);
+  const actionError = useApp((s) => s.actionError);
+  const setActionError = useApp((s) => s.setActionError);
+
+  /** The dataset the user asked to remove, held until they confirm. */
+  const [pendingRemoval, setPendingRemoval] = useState<Dataset | null>(null);
 
   const [busy, setBusy] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -140,6 +149,13 @@ export function FilesScreen() {
             </Alert>
           )}
 
+          {actionError && (
+            <Alert tone="danger">
+              <AlertTriangle />
+              <span>{actionError}</span>
+            </Alert>
+          )}
+
           {/* Open datasets — the main content of this screen. */}
           <section aria-labelledby="open-datasets">
             <div className="mb-2.5 flex items-baseline justify-between">
@@ -166,11 +182,17 @@ export function FilesScreen() {
                   const head = d.history[d.headIndex];
                   const isJson = d.name.toLowerCase().endsWith('.json');
                   return (
-                    <li key={d.id}>
+                    <li
+                      key={d.id}
+                      className="group relative rounded-lg border border-line bg-surface-800 transition-colors focus-within:border-line-strong hover:border-line-strong hover:bg-surface-700"
+                    >
+                      {/* The open action is a button and the remove action is a
+                          sibling of it, not a child: a button inside a button is
+                          invalid and the inner one is unreachable by keyboard. */}
                       <button
                         type="button"
                         onClick={() => select(d.id)}
-                        className="group w-full rounded-lg border border-line bg-surface-800 p-3.5 text-left transition-colors hover:border-line-strong hover:bg-surface-700"
+                        className="w-full p-3.5 text-left"
                       >
                         <div className="flex items-start gap-2.5">
                           <FileSpreadsheet
@@ -178,7 +200,9 @@ export function FilesScreen() {
                             aria-hidden="true"
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-[14px] font-medium text-fg">{d.name}</div>
+                            <div className="truncate pr-7 text-[14px] font-medium text-fg">
+                              {d.name}
+                            </div>
                             <div className="mt-1 flex flex-wrap items-center gap-1.5">
                               <Badge>{isJson ? 'JSON' : 'CSV'}</Badge>
                               <Badge>
@@ -198,9 +222,25 @@ export function FilesScreen() {
                               )}
                             </div>
                           </div>
-                          <ArrowRight className="mt-0.5 size-4 shrink-0 text-fg-subtle transition-colors group-hover:text-primary" />
+                          <ArrowRight
+                            className="mt-0.5 size-4 shrink-0 text-fg-subtle transition-colors group-hover:text-primary"
+                            aria-hidden="true"
+                          />
                         </div>
                       </button>
+
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => {
+                          setActionError(null);
+                          setPendingRemoval(d);
+                        }}
+                        aria-label={`Remove ${d.name}`}
+                        className="absolute top-2 right-2 text-fg-subtle opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 hover:text-danger"
+                      >
+                        <Trash2 />
+                      </Button>
                     </li>
                   );
                 })}
@@ -284,6 +324,55 @@ export function FilesScreen() {
           </Card>
         </aside>
       </div>
+
+      {/* Removal is confirmed, and the confirmation says what is actually lost.
+          "Are you sure?" tells the user nothing they did not already know. */}
+      <Dialog
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemoval(null);
+        }}
+      >
+        <DialogContent
+          title="Remove this dataset?"
+          className="max-w-[420px]"
+          footer={
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPendingRemoval(null)}>
+                Keep it
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const target = pendingRemoval;
+                  setPendingRemoval(null);
+                  if (target) void removeDataset(target.id);
+                }}
+              >
+                <Trash2 />
+                Remove
+              </Button>
+            </div>
+          }
+        >
+          <div className="space-y-3 p-4">
+            <p className="text-[13px] leading-relaxed text-fg">
+              <span className="font-medium">{pendingRemoval?.name}</span> and its{' '}
+              {pendingRemoval?.history.length ?? 0} checkpoint
+              {(pendingRemoval?.history.length ?? 0) === 1 ? '' : 's'} will be dropped from this
+              tab.
+            </p>
+            <p className="text-[12px] leading-relaxed text-fg-muted">
+              {(pendingRemoval?.headIndex ?? 0) > 0
+                ? `The ${pendingRemoval?.headIndex} applied step(s) go with it, so export the pipeline first if you want to keep it. `
+                : ''}
+              Your original file on disk is untouched — nothing was ever uploaded. Loading it again
+              starts fresh.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

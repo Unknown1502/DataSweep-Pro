@@ -162,6 +162,32 @@ describe('DatasetRegistry — checkpoint history', () => {
     );
   });
 
+  it('refuses to remove a dataset another was joined from', () => {
+    const parent = seed(registry);
+    const other = registry.create('right.csv', {
+      rowCount: 2,
+      columns: ['id'],
+      createdAt: new Date().toISOString(),
+    });
+    // A joined dataset records where it came from; removing a parent would
+    // leave that record pointing at nothing.
+    const joined = registry.create(
+      'joined.csv',
+      { rowCount: 2, columns: ['id'], createdAt: new Date().toISOString() },
+      undefined,
+      0,
+      [parent.id, other.id],
+    );
+
+    expect(() => registry.remove(parent.id)).toThrow(/joined into "joined.csv"/);
+    expect(registry.has(parent.id)).toBe(true);
+
+    // Removing the child first releases the parent.
+    registry.remove(joined.id);
+    expect(() => registry.remove(parent.id)).not.toThrow();
+    expect(registry.has(parent.id)).toBe(false);
+  });
+
   it('returns every physical table to drop on removal', () => {
     const dataset = seed(registry);
     const { checkpoint } = registry.appendCheckpoint(dataset.id, {

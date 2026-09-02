@@ -1,4 +1,4 @@
-import { CornerUpLeft, Dot } from 'lucide-react';
+import { CornerUpLeft, Dot, ExternalLink, GitPullRequest } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { callTool } from '../../lib/tools';
 import { ACTOR_LABELS } from '../../lib/tools/guards';
@@ -20,6 +20,7 @@ import { ActorBadge } from './ActorBadge';
 export function LedgerPanel() {
   const dataset = useSelectedDataset();
   const activity = useApp((s) => s.activity);
+  const exports = useApp((s) => s.exports);
   const refresh = useApp((s) => s.refresh);
   const setActionError = useApp((s) => s.setActionError);
   const invalidate = useFindings((s) => s.invalidate);
@@ -48,6 +49,7 @@ export function LedgerPanel() {
   }
 
   const calls = activity.slice(-30).reverse();
+  const published = exports.filter((e) => e.datasetId === dataset.id).slice().reverse();
 
   return (
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -135,6 +137,61 @@ export function LedgerPanel() {
         </CardContent>
       </Card>
 
+      <div className="min-w-0 space-y-4">
+        {/* Separated from tool calls because the distinction matters: everything
+            above happened inside this tab; everything here left it. */}
+        {published.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-[14px]">Left this machine</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-3">
+                {published.map((record) => (
+                  <li key={record.id} className="flex items-start gap-2.5">
+                    <GitPullRequest
+                      className="mt-0.5 size-3.5 shrink-0 text-primary"
+                      aria-hidden="true"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {record.receipt.mode === 'live' ? (
+                          <a
+                            href={record.receipt.pullRequestUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="inline-flex items-center gap-1 font-mono text-[12px] text-primary underline underline-offset-2"
+                          >
+                            #{record.receipt.pullRequestNumber}
+                            <ExternalLink className="size-3" aria-hidden="true" />
+                          </a>
+                        ) : (
+                          <span className="font-mono text-[12px] text-fg-muted">
+                            #{record.receipt.pullRequestNumber}
+                          </span>
+                        )}
+                        <Badge tone={record.receipt.mode === 'live' ? 'warn' : 'neutral'}>
+                          {record.receipt.mode}
+                        </Badge>
+                      </div>
+                      <div className="mt-0.5 truncate font-mono text-[11px] text-fg-muted">
+                        {record.destination}
+                      </div>
+                      <div className="font-mono text-[10px] text-fg-subtle tabular-nums">
+                        {new Date(record.at).toLocaleString()} · {ACTOR_LABELS[record.actor]} ·{' '}
+                        {record.artifactPaths.length} files
+                      </div>
+                      <div className="truncate font-mono text-[10px] text-fg-subtle">
+                        manifest {record.manifestHash.slice(0, 16)}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
       <Card className="min-w-0">
         <CardHeader>
           <CardTitle className="text-[14px]">Tool calls</CardTitle>
@@ -168,6 +225,7 @@ export function LedgerPanel() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

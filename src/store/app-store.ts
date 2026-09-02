@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import { dropTables } from '../lib/engine/apply';
 import { ingestCsv, ingestJson } from '../lib/engine/ingest';
+import type { ExportReceipt } from '../lib/integrations/github';
+import type { ExportManifest } from '../lib/integrations/manifest';
 import type { Dataset } from '../lib/engine/registry';
 import type { AuditEntry } from '../lib/tools/guards';
 import { initToolContext, registry } from '../lib/tools/context';
@@ -22,6 +25,24 @@ export type WorkspaceView =
   | 'exports'
   | 'docs';
 
+/**
+ * One external publication, as the ledger records it.
+ *
+ * Carries everything needed to answer "what left this machine, when, at whose
+ * instruction, and where did it land" without holding the artifacts themselves.
+ */
+export interface ExportRecord {
+  readonly id: string;
+  readonly datasetId: string;
+  readonly datasetName: string;
+  readonly at: string;
+  readonly actor: 'human';
+  readonly destination: string;
+  readonly manifestHash: string;
+  readonly artifactPaths: readonly string[];
+  readonly receipt: ExportReceipt;
+}
+
 interface AppState {
   status: BootStatus;
   bootError: string | null;
@@ -35,9 +56,13 @@ interface AppState {
 
   view: WorkspaceView;
   activity: AuditEntry[];
+  /** External publications, newest last. Never persisted. */
+  exports: ExportRecord[];
 
   boot: () => Promise<void>;
   pushActivity: (entry: AuditEntry) => void;
+  recordExport: (manifest: ExportManifest, receipt: ExportReceipt) => void;
+  removeDataset: (id: string) => Promise<void>;
   uploadFile: (file: File) => Promise<void>;
   loadSample: (name: string, csv: string) => Promise<void>;
   select: (id: string | null) => void;
@@ -55,6 +80,7 @@ export const useApp = create<AppState>((set, get) => ({
   actionError: null,
   view: 'overview',
   activity: [],
+  exports: [],
 
   boot: async () => {
     try {
@@ -81,6 +107,27 @@ export const useApp = create<AppState>((set, get) => ({
     get().select(dataset.id);
   },
 
+  /**
+   * Forget a dataset and free the tables behind it.
+   *
+   * The registry decides whether it may go; this only carries out the drop and
+   * tidies up what pointed at it. The export ledger is deliberately left alone:
+   * it records that a publication happened, and that remains true after the
+   * dataset is gone.
+   */
+  removeDataset: async (id: string) => {
+    const ctx = await initToolContext();
+    try {
+      const tables = registry.remove(id);
+      await dropTables(ctx.engine, tables);
+    } catch (error) {
+      set({ actionError: error instanceof Error ? error.message : String(error) });
+      return;
+    }
+    if (get().selectedId === id) get().select(null);
+    get().refresh();
+  },
+
   loadSample: async (name: string, csv: string) => {
     const ctx = await initToolContext();
     const dataset = await ingestCsv(ctx.engine, registry, name, csv);
@@ -101,6 +148,37 @@ export const useApp = create<AppState>((set, get) => ({
       state.activity.some((e) => e.id === entry.id)
         ? state
         : { activity: [...state.activity, entry].slice(-500) },
+    ),
+
+  /**
+   * Record a publication that has already happened.
+   *
+   * Called only after a receipt exists, so the ledger never shows an export
+   * that did not complete. Keyed by manifest hash: a retry that returns the
+   * cached receipt updates nothing rather than logging a second publication.
+   */
+  recordExport: (manifest, receipt) =>
+    set((state) =>
+      state.exports.some((e) => e.manifestHash === manifest.manifestHash)
+        ? state
+        : {
+            exports: [
+              ...state.exports,
+              {
+                id: `exp_${manifest.manifestHash.slice(0, 12)}`,
+                datasetId: manifest.datasetId,
+                datasetName: manifest.datasetName,
+                at: receipt.createdAt,
+                actor: 'human',
+                destination:
+                  `${manifest.destination.owner}/${manifest.destination.repo}` +
+                  ` · ${manifest.destination.branch}`,
+                manifestHash: manifest.manifestHash,
+                artifactPaths: manifest.artifacts.map((a) => a.path),
+                receipt,
+              },
+            ],
+          },
     ),
 
   // Opening a different dataset always lands on Overview: carrying a pane like

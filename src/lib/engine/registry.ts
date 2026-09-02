@@ -189,9 +189,31 @@ export class DatasetRegistry {
     return updated;
   }
 
-  /** Remove a dataset. Returns every physical table that should be dropped. */
+  /**
+   * Remove a dataset. Returns every physical table that should be dropped.
+   *
+   * Every checkpoint's table is returned, not only the live one — undone states
+   * are still materialized and would otherwise leak for the tab's lifetime.
+   *
+   * Refuses when another dataset was joined from this one. Lineage is a claim
+   * about where data came from; letting a parent vanish would leave that claim
+   * pointing at nothing, and a lineage view that quietly loses a node is worse
+   * than one that will not let you break it.
+   */
   remove(id: unknown): string[] {
     const dataset = this.resolve(id);
+
+    const children = [...this.#datasets.values()].filter(
+      (d) => d.id !== dataset.id && d.parents.includes(dataset.id),
+    );
+    if (children.length > 0) {
+      throw new Error(
+        `"${dataset.name}" was joined into ${children.map((c) => `"${c.name}"`).join(', ')}. ` +
+          'Remove the joined dataset first — otherwise its lineage would point at a dataset ' +
+          'that no longer exists.',
+      );
+    }
+
     this.#datasets.delete(dataset.id);
     return dataset.history.map((c) => c.id);
   }

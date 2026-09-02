@@ -47,12 +47,16 @@ export type Outcome = 'ok' | 'error' | 'awaiting_confirmation' | 'rejected';
  * When several parties can drive the same tools, "what changed my data" is only
  * answerable if each entry records who asked.
  */
-export type Actor = 'human' | 'demo-agent' | 'claude-agent' | 'external-mcp';
+export type Actor = 'human' | 'demo-agent' | 'claude-agent' | 'model-agent' | 'external-mcp';
 
 export const ACTOR_LABELS: Record<Actor, string> = {
   human: 'You',
   'demo-agent': 'Guided demo',
   'claude-agent': 'Claude',
+  // A model the user connected themselves. Kept separate from 'claude-agent'
+  // because the ledger's job is to answer who changed the data, and recording
+  // a GPT or Llama run as "Claude" would be the one thing it must not do.
+  'model-agent': 'Connected model',
   'external-mcp': 'External MCP client',
 };
 

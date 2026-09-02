@@ -1,14 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
-import { Bot, CheckCircle2, ChevronRight, Play, Plug, X } from 'lucide-react';
+import { Bot, CheckCircle2, ChevronRight, Play, Plug, Plus, Trash2, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { createClaudeAgent } from '../../lib/agent/claude-agent';
 import { demoAgent } from '../../lib/agent/demo-agent';
+import { forgetKey, keyFor } from '../../lib/agent/key-vault';
+import { createOpenAIAgent } from '../../lib/agent/openai-agent';
+import { providerById, type ModelConnection } from '../../lib/agent/providers';
 import type { AgentEvent, AgentRun } from '../../lib/agent/types';
 import { useApp, useSelectedDataset } from '../../store/app-store';
 import { useFindings } from '../../store/findings';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Alert, Input } from '../ui/misc';
+import { Alert } from '../ui/misc';
+import { AddModelDialog } from './AddModelDialog';
 
 interface Entry {
   id: number;
@@ -44,8 +48,19 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
   const [running, setRunning] = useState(false);
   const [awaiting, setAwaiting] = useState(false);
   const [done, setDone] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [mode, setMode] = useState<'demo' | 'claude' | 'relay'>('demo');
+  /**
+   * Which path is driving.
+   *
+   * `models` holds the connections the user added; each is selectable by its
+   * own id, so several can be configured at once and swapped between without
+   * re-entering a key. Keys are not in here — they are in the vault, so this
+   * state can be rendered and passed around freely.
+   */
+  const [mode, setMode] = useState<'demo' | 'relay' | string>('demo');
+  const [models, setModels] = useState<ModelConnection[]>([]);
+  const [adding, setAdding] = useState(false);
+
+  const activeModel = models.find((m) => m.id === mode) ?? null;
 
   const runRef = useRef<AgentRun | null>(null);
   const counter = useRef(0);
@@ -98,7 +113,13 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
     counter.current = 0;
     setRunning(true);
 
-    const agent = mode === 'claude' ? createClaudeAgent(apiKey.trim()) : demoAgent;
+    // Anthropic keeps its SDK-backed loop; every other provider goes through
+    // the OpenAI-compatible one. Both enforce the approval gate themselves.
+    const agent = !activeModel
+      ? demoAgent
+      : activeModel.provider === 'anthropic'
+        ? createClaudeAgent(keyFor(activeModel.id))
+        : createOpenAIAgent(activeModel);
     const run = agent.run(dataset.id);
     runRef.current = run;
     await pump(run);
@@ -118,8 +139,15 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
         ? 'complete'
         : 'ready';
 
-  const canStart =
-    !!dataset && !running && (mode === 'demo' || apiKey.trim().startsWith('sk-ant-'));
+  const canStart = !!dataset && !running && (mode === 'demo' || activeModel !== null);
+
+  function disconnect(connection: ModelConnection) {
+    forgetKey(connection.id);
+    setModels((prev) => prev.filter((m) => m.id !== connection.id));
+    // Leaving a removed model selected would keep Start enabled with nothing
+    // behind it, so the selection falls back to the demo.
+    setMode((current) => (current === connection.id ? 'demo' : current));
+  }
 
   const lastAction = [...entries].reverse().find((e) => e.event.type === 'tool');
 
@@ -147,14 +175,15 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
 
       {/* Agent path */}
       <div className="shrink-0 border-b border-line px-3 py-2.5">
-        <div className="mb-2 flex gap-1" role="tablist" aria-label="Agent path">
-          {(
-            [
-              ['demo', 'Guided demo'],
-              ['claude', 'Claude'],
-              ['relay', 'Local relay'],
-            ] as const
-          ).map(([id, label]) => (
+        <div className="mb-2 flex flex-wrap gap-1" role="tablist" aria-label="Agent path">
+          {[
+            { id: 'demo', label: 'Guided demo' },
+            ...models.map((m) => ({
+              id: m.id,
+              label: `${providerById(m.provider).label} · ${m.model}`,
+            })),
+            { id: 'relay', label: 'Local relay' },
+          ].map(({ id, label }) => (
             <button
               key={id}
               type="button"
@@ -162,8 +191,9 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
               aria-selected={mode === id}
               onClick={() => setMode(id)}
               disabled={running}
+              title={label}
               className={cn(
-                'rounded-sm px-2 py-1 text-[11px] font-medium transition-colors',
+                'max-w-[160px] truncate rounded-sm px-2 py-1 text-[11px] font-medium transition-colors',
                 mode === id
                   ? 'bg-agent-dim text-agent'
                   : 'text-fg-subtle hover:bg-surface-700 hover:text-fg-muted',
@@ -172,24 +202,42 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
               {label}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            disabled={running}
+            className="flex items-center gap-1 rounded-sm border border-dashed border-line-strong px-2 py-1 text-[11px] font-medium text-fg-subtle transition-colors hover:border-agent-line hover:text-agent"
+          >
+            <Plus className="size-3" aria-hidden="true" />
+            Add model
+          </button>
         </div>
 
-        {mode === 'claude' && (
-          <>
-            <Input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-ant-…"
-              disabled={running}
-              aria-label="Anthropic API key"
-              className="font-mono text-[12px]"
-            />
-            <p className="mt-1.5 text-[11px] leading-relaxed text-fg-subtle">
-              Held in memory for this tab only, never stored. Requests go from your browser
-              straight to Anthropic.
+        {activeModel && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 rounded-sm border border-line bg-surface-800 px-2 py-1.5">
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-mono text-[11px] text-fg">{activeModel.model}</div>
+                <div className="font-mono text-[10px] text-fg-subtle">
+                  {providerById(activeModel.provider).label} · key held in this tab
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => disconnect(activeModel)}
+                disabled={running}
+                aria-label={`Disconnect ${providerById(activeModel.provider).label} ${activeModel.model}`}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+            <p className="text-[11px] leading-relaxed text-fg-subtle">
+              Runs the same tools and the same approval gate as every other path here. Requests go
+              from your browser straight to {providerById(activeModel.provider).label}.
             </p>
-          </>
+          </div>
         )}
 
         {mode === 'demo' && (
@@ -226,6 +274,16 @@ export function AgentRail({ onClose }: { onClose: () => void }) {
           </Button>
         )}
       </div>
+
+      <AddModelDialog
+        open={adding}
+        onOpenChange={setAdding}
+        existing={models}
+        onAdded={(connection) => {
+          setModels((prev) => [...prev, connection]);
+          setMode(connection.id);
+        }}
+      />
 
       {/* Current task */}
       {dataset && (running || awaiting) && lastAction?.event.type === 'tool' && (
