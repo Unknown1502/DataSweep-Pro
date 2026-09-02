@@ -38,6 +38,14 @@ export interface Dataset {
    * quality report must surface rather than leave for the user to discover.
    */
   readonly skippedRows: number;
+  /**
+   * Datasets this one was derived from — currently only set by a join.
+   *
+   * Without this the lineage view would have to infer relationships that are
+   * not recorded anywhere, i.e. draw edges that do not exist. An empty array
+   * means "loaded from a file", which is the honest default.
+   */
+  readonly parents: readonly string[];
 }
 
 export class UnknownDatasetError extends Error {
@@ -73,6 +81,7 @@ export class DatasetRegistry {
     initial: Omit<Checkpoint, 'id' | 'tool' | 'args' | 'label'>,
     tableId?: string,
     skippedRows = 0,
+    parents: readonly string[] = [],
   ): Dataset {
     const id = tableId ?? generateTableName('ds');
     const checkpoint: Checkpoint = {
@@ -90,6 +99,7 @@ export class DatasetRegistry {
       history: [checkpoint],
       headIndex: 0,
       skippedRows,
+      parents,
     };
 
     this.#datasets.set(id, dataset);

@@ -11,6 +11,8 @@ import type { IssueType, Severity } from './types';
  */
 const BASE_WEIGHT: Record<IssueType, number> = {
   injected_content: 1.0,
+  // No single parse setting is correct, so any conversion corrupts part of it.
+  contradictory_date_order: 0.95,
   duplicate_rows: 0.8,
   mixed_types: 0.7,
   inconsistent_date_format: 0.65,

@@ -4,12 +4,16 @@ import { useApp, useSelectedDataset } from '../store/app-store';
 import { QualityPanel } from './QualityPanel';
 import { DataPreview } from './DataPreview';
 import { ExportPanel } from './ExportPanel';
+import { LineageView } from './LineageView';
+import { RulesPanel } from './RulesPanel';
 
 export function Workspace() {
   const dataset = useSelectedDataset();
   const actionError = useApp((s) => s.actionError);
   const setActionError = useApp((s) => s.setActionError);
   const [exporting, setExporting] = useState(false);
+  const [showLineage, setShowLineage] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   if (!dataset) return <EmptyState />;
 
@@ -28,12 +32,22 @@ export function Workspace() {
               : `${appliedSteps} step${appliedSteps === 1 ? '' : 's'} applied`}
           </p>
         </div>
-        <button className="btn" onClick={() => setExporting(true)}>
-          Export pipeline
-        </button>
+        <div className="flex gap-2">
+          <button className="btn" onClick={() => setShowRules(true)}>
+            Rules
+          </button>
+          <button className="btn" onClick={() => setShowLineage(true)}>
+            Lineage
+          </button>
+          <button className="btn" onClick={() => setExporting(true)}>
+            Export
+          </button>
+        </div>
       </div>
 
       {exporting && <ExportPanel onClose={() => setExporting(false)} />}
+      {showLineage && <LineageView onClose={() => setShowLineage(false)} />}
+      {showRules && <RulesPanel onClose={() => setShowRules(false)} />}
       {actionError && (
         <div className="mb-4 flex items-start gap-3 rounded-md border border-alarm/40 bg-alarm-dim px-3 py-2.5">
           <span className="min-w-0 flex-1 text-xs text-text-hi">{actionError}</span>

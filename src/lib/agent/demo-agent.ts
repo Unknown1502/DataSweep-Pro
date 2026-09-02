@@ -48,7 +48,7 @@ export const demoAgent: Agent = {
       yield { type: 'say', text: 'Looking at what is loaded.' };
       yield { type: 'tool', name: 'list_datasets', args: {} };
 
-      const listing = (await callTool('list_datasets', {})) as {
+      const listing = (await callTool('list_datasets', {}, 'demo-agent')) as {
         datasets: { dataset_id: string; name: string; rows: number; columns: string[] }[];
       };
       const dataset = listing.datasets.find((d) => d.dataset_id === datasetId);
@@ -70,9 +70,7 @@ export const demoAgent: Agent = {
         args: { dataset_id: datasetId },
       };
 
-      const report = (await callTool('detect_data_quality_issues', {
-        dataset_id: datasetId,
-      })) as { quality_score: number; issues: Issue[]; summary: string };
+      const report = (await callTool('detect_data_quality_issues', { dataset_id: datasetId }, 'demo-agent')) as { quality_score: number; issues: Issue[]; summary: string };
 
       yield {
         type: 'result',
@@ -128,7 +126,7 @@ export const demoAgent: Agent = {
 
         yield { type: 'tool', name: 'apply_cleaning_transformations', args };
 
-        const preview = (await callTool('apply_cleaning_transformations', args)) as {
+        const preview = (await callTool('apply_cleaning_transformations', args, 'demo-agent')) as {
           summary: string;
           details: Record<string, unknown>;
           confirmation_token: string;
@@ -146,10 +144,11 @@ export const demoAgent: Agent = {
           continue;
         }
 
-        await callTool('apply_cleaning_transformations', {
-          ...args,
-          confirmation_token: preview.confirmation_token,
-        });
+        await callTool(
+          'apply_cleaning_transformations',
+          { ...args, confirmation_token: preview.confirmation_token },
+          'demo-agent',
+        );
         applied += 1;
 
         yield {
@@ -165,9 +164,7 @@ export const demoAgent: Agent = {
       }
 
       yield { type: 'tool', name: 'generate_impact_report', args: { dataset_id: datasetId } };
-      const impact = (await callTool('generate_impact_report', {
-        dataset_id: datasetId,
-      })) as {
+      const impact = (await callTool('generate_impact_report', { dataset_id: datasetId }, 'demo-agent')) as {
         rows_original: number;
         rows_current: number;
         current_quality_score: number;

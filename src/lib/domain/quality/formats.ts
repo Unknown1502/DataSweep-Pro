@@ -1,59 +1,17 @@
 import { quoteIdent, quoteLiteral } from '../../engine/sql';
-import { issueId, pct, ratioOf, sampleValues } from './helpers';
+import {
+  bucketColumn,
+  issueId,
+  OTHER_BUCKET as OTHER,
+  pct,
+  ratioOf,
+  sampleValues,
+} from './helpers';
 import { DATE_PATTERNS, FORMAT_CONFIDENCE_THRESHOLD, NUMBER_PATTERNS } from './patterns';
 import type { FormatPattern } from './patterns';
+import { resolveDateOrder } from './semantics';
 import { scoreSeverity } from './severity';
-import type { AnalyzeContext, Analyzer, QualityIssue } from './types';
-
-const OTHER = '__other__';
-
-/**
- * Assign every value to the *first* pattern it matches.
- *
- * A chained CASE rather than one COUNT per pattern, because the patterns are
- * not all mutually exclusive and summing overlapping counts would exceed the
- * row count and corrupt the ratios.
- */
-function bucketQuery(table: string, column: string, patterns: readonly FormatPattern[]): string {
-  const col = quoteIdent(column);
-  const branches = patterns
-    .map((p) => `WHEN regexp_matches(${col}, ${quoteLiteral(p.regex)}) THEN ${quoteLiteral(p.id)}`)
-    .join('\n           ');
-
-  return `SELECT bucket, COUNT(*) AS n FROM (
-            SELECT CASE
-           ${branches}
-             ELSE ${quoteLiteral(OTHER)}
-           END AS bucket
-            FROM ${quoteIdent(table)}
-           WHERE ${col} IS NOT NULL AND trim(${col}) <> ''
-          ) GROUP BY bucket`;
-}
-
-interface BucketCounts {
-  readonly counts: Map<string, number>;
-  readonly populated: number;
-  readonly recognized: number;
-}
-
-async function bucketColumn(
-  ctx: AnalyzeContext,
-  column: string,
-  patterns: readonly FormatPattern[],
-): Promise<BucketCounts> {
-  const result = await ctx.engine.query(bucketQuery(ctx.table, column, patterns));
-
-  const counts = new Map<string, number>();
-  let populated = 0;
-  for (const row of result.rows) {
-    const bucket = String(row['bucket']);
-    const n = Number(row['n'] ?? 0);
-    counts.set(bucket, n);
-    populated += n;
-  }
-
-  return { counts, populated, recognized: populated - (counts.get(OTHER) ?? 0) };
-}
+import type { Analyzer, QualityIssue } from './types';
 
 function namedBuckets(
   counts: Map<string, number>,
@@ -76,11 +34,48 @@ export const analyzeDateFormats: Analyzer = async (ctx) => {
   const issues: QualityIssue[] = [];
 
   for (const column of ctx.columns) {
-    const { counts, populated, recognized } = await bucketColumn(ctx, column, DATE_PATTERNS);
+    const { counts, populated, recognized } = await bucketColumn(
+      ctx.engine,
+      ctx.table,
+      column,
+      DATE_PATTERNS,
+    );
     if (populated === 0) continue;
 
     // Only judge columns that actually hold dates.
     if (recognized / populated < FORMAT_CONFIDENCE_THRESHOLD) continue;
+
+    // Resolve D/M/Y vs M/D/Y from the values themselves rather than assuming.
+    const dateOrder = await resolveDateOrder(ctx.engine, ctx.table, column);
+
+    // A column mixing both orderings cannot be parsed correctly under any single
+    // setting. That is a defect in its own right, not a parameter to pick — and
+    // it is reported even when only one textual format is present, because the
+    // damage does not depend on format variety.
+    if (dateOrder.order === 'contradictory') {
+      const affected = dateOrder.firstOver12 + dateOrder.secondOver12;
+      issues.push({
+        id: issueId('contradictory_date_order', column),
+        type: 'contradictory_date_order',
+        severity: 'high',
+        column,
+        description:
+          `"${column}" contains both D/M/YYYY and M/D/YYYY dates. ${dateOrder.evidence} ` +
+          `Any conversion will silently mis-read part of this column, so the ordering has to ` +
+          `be established per row before it can be standardized.`,
+        affectedRows: affected,
+        totalRows: ctx.rowCount,
+        ratio: ratioOf(affected, ctx.rowCount),
+        evidence: [
+          `${dateOrder.firstOver12} value(s) can only be day-first`,
+          `${dateOrder.secondOver12} value(s) can only be month-first`,
+        ],
+        // No suggested fix on purpose: there is no correct automatic answer,
+        // and offering one would invite a silent corruption.
+        suggestedFix: null,
+      });
+      continue;
+    }
 
     const present = namedBuckets(counts, DATE_PATTERNS);
     if (present.length < 2) continue;
@@ -89,6 +84,7 @@ export const analyzeDateFormats: Analyzer = async (ctx) => {
     const dominant = present[0];
     const minority = present.slice(1).reduce((sum, b) => sum + b.n, 0);
     const ratio = ratioOf(minority, ctx.rowCount);
+    const dayFirst = dateOrder.order !== 'month_first';
 
     issues.push({
       id: issueId('inconsistent_date_format', column),
@@ -106,10 +102,11 @@ export const analyzeDateFormats: Analyzer = async (ctx) => {
       suggestedFix: {
         operation: 'standardize_dates',
         column,
-        parameters: { target: 'YYYY-MM-DD' },
+        parameters: { target: 'YYYY-MM-DD', dayFirst },
         rationale:
-          `Converts all ${present.length} formats to ISO YYYY-MM-DD, which sorts correctly as text. ` +
-          `Most values already use ${dominant?.label ?? 'the dominant format'}.`,
+          `Converts all ${present.length} formats to ISO YYYY-MM-DD, which sorts correctly as ` +
+          `text. Most values already use ${dominant?.label ?? 'the dominant format'}. ` +
+          dateOrder.evidence,
       },
     });
   }
@@ -125,7 +122,12 @@ export const analyzeNumberFormats: Analyzer = async (ctx) => {
   const issues: QualityIssue[] = [];
 
   for (const column of ctx.columns) {
-    const { counts, populated, recognized } = await bucketColumn(ctx, column, NUMBER_PATTERNS);
+    const { counts, populated, recognized } = await bucketColumn(
+      ctx.engine,
+      ctx.table,
+      column,
+      NUMBER_PATTERNS,
+    );
     if (populated === 0) continue;
     if (recognized / populated < FORMAT_CONFIDENCE_THRESHOLD) continue;
 

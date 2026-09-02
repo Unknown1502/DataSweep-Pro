@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { unfence } from '../lib/domain/injection';
 import { callTool } from '../lib/tools';
 import { useApp, useSelectedDataset } from '../store/app-store';
+import { AnalysisTimeline, type Concurrency } from './AnalysisTimeline';
 
 interface ToolIssue {
   id: string;
@@ -24,6 +25,7 @@ interface ToolReport {
   quality_score: number;
   summary: string;
   issues: ToolIssue[];
+  concurrency?: Concurrency;
 }
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -46,6 +48,24 @@ export function QualityPanel() {
     details: Record<string, unknown>;
     token: string;
   } | null>(null);
+
+  /**
+   * Scan as soon as a dataset appears, rather than waiting to be asked.
+   *
+   * Keyed on dataset identity, not on `revision`: re-scanning after every
+   * applied fix would be noisy and slow, and the user can re-scan on demand.
+   * The ref guards against StrictMode's deliberate double-invocation.
+   */
+  const autoScanned = useRef<string | null>(null);
+  const datasetId = dataset?.id ?? null;
+
+  useEffect(() => {
+    if (!datasetId || autoScanned.current === datasetId) return;
+    autoScanned.current = datasetId;
+    void analyze();
+    // analyze closes over `dataset`, which is stable for a given id.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [datasetId]);
 
   if (!dataset) return null;
   const head = dataset.history[dataset.headIndex];
@@ -149,6 +169,12 @@ export function QualityPanel() {
           </button>
         </div>
 
+        {analyzing && !report && (
+          <p className="px-4 py-6 text-xs text-text-mid">
+            Scanning automatically — this only reads the data.
+          </p>
+        )}
+
         {!report && !analyzing && (
           <p className="px-4 py-6 text-xs text-text-mid">
             Scan checks for missing values, duplicate rows, inconsistent date and number formats,
@@ -160,6 +186,8 @@ export function QualityPanel() {
         {report && report.issues.length === 0 && (
           <p className="px-4 py-6 text-xs text-calm">{report.summary}</p>
         )}
+
+        {report?.concurrency && <AnalysisTimeline concurrency={report.concurrency} />}
 
         {report && report.issues.length > 0 && (
           <ul className="divide-y divide-ink-600">

@@ -9,7 +9,8 @@ export type IssueType =
   | 'mixed_types'
   | 'outliers'
   | 'constant_column'
-  | 'injected_content';
+  | 'injected_content'
+  | 'contradictory_date_order';
 
 export type Severity = 'high' | 'medium' | 'low';
 

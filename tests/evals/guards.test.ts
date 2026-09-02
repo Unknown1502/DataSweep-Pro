@@ -10,6 +10,7 @@ import {
   ToolError,
   type ToolContext,
   fingerprintArgs,
+  callAs,
   withGuards,
 } from '../../src/lib/tools/guards';
 import type { SqlEngine } from '../../src/lib/engine/types';
@@ -276,6 +277,59 @@ describe('tool guards', () => {
       await tool({ dataset_id: datasetId });
 
       expect(seen).toEqual(['awaiting_confirmation']);
+    });
+  });
+
+  describe('actor attribution', () => {
+    const readTool = () =>
+      withGuards(
+        {
+          name: 'count_rows',
+          mutating: false,
+          validate: (i) => i,
+          execute: async () => ({ n: await rowCount() }),
+        },
+        () => ctx,
+      );
+
+    it('attributes an unwrapped call to an external MCP client', async () => {
+      // Calls arriving over document.modelContext do not pass through callAs,
+      // so the conservative default is that they came from outside.
+      await readTool()({});
+      expect(ctx.audit.entries()[0]?.actor).toBe('external-mcp');
+    });
+
+    it('records the actor a call was made as', async () => {
+      const tool = readTool();
+      await callAs('human', () => tool({}));
+      await callAs('claude-agent', () => tool({}));
+      await callAs('demo-agent', () => tool({}));
+
+      expect(ctx.audit.entries().map((e) => e.actor)).toEqual([
+        'human',
+        'claude-agent',
+        'demo-agent',
+      ]);
+    });
+
+    it('does not leak an actor to a later unwrapped call', async () => {
+      // The module-level actor must be cleared synchronously, or every
+      // subsequent external call would be misattributed to the last UI action.
+      const tool = readTool();
+      await callAs('human', () => tool({}));
+      await tool({});
+
+      expect(ctx.audit.entries().map((e) => e.actor)).toEqual(['human', 'external-mcp']);
+    });
+
+    it('attributes rejected calls too, so refusals name who tried', async () => {
+      const tool = makeDestructiveTool();
+      await expect(
+        callAs('claude-agent', () => tool({ dataset_id: datasetId, confirmation_token: 'nope' })),
+      ).rejects.toThrow();
+
+      expect(ctx.audit.entries()[0]?.actor).toBe('claude-agent');
+      expect(ctx.audit.entries()[0]?.outcome).toBe('rejected');
     });
   });
 

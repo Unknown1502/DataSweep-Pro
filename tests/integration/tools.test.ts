@@ -302,16 +302,45 @@ describe('WebMCP tools, end to end', () => {
         rows_current: number;
         steps_applied: number;
         history: unknown[];
-        effort_estimate: { basis: string; caveat: string };
+        measured: {
+          rows_in: number;
+          rows_out: number;
+          tool_calls_total: number;
+          tool_time_ms: number;
+          tool_calls_by_actor: Record<string, number>;
+          steps: { rows_before: number; rows_after: number; rows_changed: number }[];
+        };
+        estimated: { manual_minutes_saved: number; basis: string; caveat: string };
       };
 
       expect(report.rows_original).toBe(5);
       expect(report.rows_current).toBe(4);
       expect(report.steps_applied).toBe(1);
       expect(report.history).toHaveLength(2);
-      // The number must carry its own basis, not float free as a claim.
-      expect(report.effort_estimate.basis).toMatch(/cleaning step/);
-      expect(report.effort_estimate.caveat).toMatch(/estimate/i);
+      // Measured facts come from the ledger and the database.
+      expect(report.measured.rows_in).toBe(5);
+      expect(report.measured.rows_out).toBe(4);
+      expect(report.measured.tool_calls_total).toBeGreaterThan(0);
+      expect(report.measured.tool_time_ms).toBeGreaterThanOrEqual(0);
+      expect(report.measured.steps).toHaveLength(1);
+      expect(report.measured.steps[0]?.rows_changed).toBe(1);
+
+      // The one assumption is quarantined in its own object, so it cannot be
+      // mistaken for something observed.
+      expect(report.estimated.basis).toMatch(/cleaning step/);
+      expect(report.estimated.caveat).toMatch(/not a measurement/i);
+      expect(report.measured).not.toHaveProperty('manual_minutes_saved');
+    });
+
+    it('attributes tool calls to whoever made them', async () => {
+      const dataset = await load();
+      await call('detect_data_quality_issues', { dataset_id: dataset.id });
+
+      const report = (await call('generate_impact_report', { dataset_id: dataset.id })) as {
+        measured: { tool_calls_by_actor: Record<string, number> };
+      };
+      // Nothing here went through callAs, so these are external-client calls.
+      expect(Object.keys(report.measured.tool_calls_by_actor)).toContain('external-mcp');
     });
   });
 

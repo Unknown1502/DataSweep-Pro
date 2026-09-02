@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { callTool } from '../lib/tools';
-import type { AuditEntry } from '../lib/tools/guards';
+import { ACTOR_LABELS, type AuditEntry } from '../lib/tools/guards';
 import { useApp, useSelectedDataset } from '../store/app-store';
 
 /**
@@ -140,12 +140,11 @@ function ActivityRow({ entry }: { entry: AuditEntry }) {
       <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${style.dot}`} />
       <span className="min-w-0 flex-1">
         <span className="block truncate font-mono text-[11px] text-text-mid">{entry.tool}</span>
-        {(style.note || entry.mutated) && (
-          <span className="block font-mono text-[10px] text-text-lo">
-            {style.note}
-            {entry.mutated ? 'changed data' : ''}
-          </span>
-        )}
+        <span className="block font-mono text-[10px] text-text-lo">
+          {ACTOR_LABELS[entry.actor]}
+          {style.note ? ` · ${style.note}` : ''}
+          {entry.mutated ? ' · changed data' : ''}
+        </span>
       </span>
       <span className="mt-px font-mono text-[10px] text-text-lo tabular-nums">
         {entry.durationMs}ms

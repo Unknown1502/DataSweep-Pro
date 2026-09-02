@@ -39,6 +39,43 @@ export class ToolError extends Error {
 
 export type Outcome = 'ok' | 'error' | 'awaiting_confirmation' | 'rejected';
 
+/**
+ * Who initiated a call.
+ *
+ * The honest core of "agents as auditable team members": not a fabricated
+ * identity directory, just accurate provenance for work that actually happened.
+ * When several parties can drive the same tools, "what changed my data" is only
+ * answerable if each entry records who asked.
+ */
+export type Actor = 'human' | 'demo-agent' | 'claude-agent' | 'external-mcp';
+
+export const ACTOR_LABELS: Record<Actor, string> = {
+  human: 'You',
+  'demo-agent': 'Guided demo',
+  'claude-agent': 'Claude',
+  'external-mcp': 'External MCP client',
+};
+
+/**
+ * Set for the duration of one synchronous call into a tool.
+ *
+ * A module-level variable is safe here only because it is read on the first
+ * line of `guarded()`, before any await, in the same microtask as the caller.
+ * Anything reached after an await must use the captured value, never re-read
+ * this. Calls arriving over `document.modelContext` never pass through
+ * `callAs`, so they correctly fall through to 'external-mcp'.
+ */
+let pendingActor: Actor | null = null;
+
+export function callAs<T>(actor: Actor, fn: () => T): T {
+  pendingActor = actor;
+  try {
+    return fn();
+  } finally {
+    pendingActor = null;
+  }
+}
+
 export interface AuditEntry {
   readonly id: string;
   readonly tool: string;
@@ -49,6 +86,8 @@ export interface AuditEntry {
   readonly message?: string;
   /** True when this call actually changed data. */
   readonly mutated: boolean;
+  /** Who initiated it. */
+  readonly actor: Actor;
 }
 
 /**
@@ -306,6 +345,9 @@ export function withGuards<TInput, TOutput>(
   }
 
   return async function guarded(rawInput: unknown): Promise<TOutput | ConfirmationRequired> {
+    // Read before any await: see the note on `pendingActor`.
+    const actor: Actor = pendingActor ?? 'external-mcp';
+
     const ctx = getContext();
     const startedAt = new Date().toISOString();
     const start = Date.now();
@@ -318,6 +360,7 @@ export function withGuards<TInput, TOutput>(
         startedAt,
         durationMs: Date.now() - start,
         mutated,
+        actor,
         ...(message === undefined ? {} : { message }),
       });
 

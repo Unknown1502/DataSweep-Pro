@@ -90,6 +90,24 @@ const ANALYZERS: Record<CheckName, Analyzer> = {
 
 export const ALL_CHECKS = Object.keys(ANALYZERS) as CheckName[];
 
+/**
+ * What one check actually did, measured.
+ *
+ * This is the honest substrate for the concurrency view: the checks genuinely
+ * do run at the same time, and these numbers show it rather than assert it. No
+ * coordination happens between them and none is claimed — they are independent
+ * by construction, which is exactly why running them concurrently is correct.
+ */
+export interface CheckTiming {
+  readonly check: CheckName;
+  /** Milliseconds after the batch started that this check began. */
+  readonly startOffsetMs: number;
+  readonly durationMs: number;
+  readonly findings: number;
+  /** True when the check threw and its findings were dropped. */
+  readonly failed: boolean;
+}
+
 export interface QualityReport {
   readonly score: number;
   readonly issues: readonly QualityIssue[];
@@ -97,6 +115,9 @@ export interface QualityReport {
   readonly rowCount: number;
   readonly columnCount: number;
   readonly summary: string;
+  readonly timings: readonly CheckTiming[];
+  /** Wall-clock for the whole batch. Less than the sum of durations. */
+  readonly totalMs: number;
 }
 
 const SEVERITY_RANK: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
@@ -126,19 +147,43 @@ export async function analyzeQuality(
     rowCount: options.rowCount,
   };
 
+  const batchStart = Date.now();
+  const timings: CheckTiming[] = [];
+
   const results = await Promise.all(
     checks.map(async (check) => {
       const analyzer = ANALYZERS[check];
       if (!analyzer) return [];
+
+      const startOffsetMs = Date.now() - batchStart;
       try {
-        return await analyzer(ctx);
+        const found = await analyzer(ctx);
+        timings.push({
+          check,
+          startOffsetMs,
+          durationMs: Date.now() - batchStart - startOffsetMs,
+          findings: found.length,
+          failed: false,
+        });
+        return found;
       } catch {
         // A single analyzer failing on an unusual column must not lose the
-        // findings from the other seven.
+        // findings from the other seven. The failure is still recorded, so a
+        // silently empty check is distinguishable from one that found nothing.
+        timings.push({
+          check,
+          startOffsetMs,
+          durationMs: Date.now() - batchStart - startOffsetMs,
+          findings: 0,
+          failed: true,
+        });
         return [];
       }
     }),
   );
+
+  const totalMs = Date.now() - batchStart;
+  timings.sort((a, b) => a.startOffsetMs - b.startOffsetMs || a.check.localeCompare(b.check));
 
   const issues = results
     .flat()
@@ -155,6 +200,8 @@ export async function analyzeQuality(
     checksRun: checks,
     rowCount: options.rowCount,
     columnCount: options.columns.length,
+    timings,
+    totalMs,
     summary:
       issues.length === 0
         ? `No quality issues found across ${options.columns.length} columns and ${options.rowCount.toLocaleString()} rows.`

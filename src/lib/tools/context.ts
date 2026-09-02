@@ -23,6 +23,10 @@ const RATE_LIMITS: Record<string, number> = {
   execute_cleaning_pipeline: 10,
   export_transformation_pipeline: 20,
   apply_community_template: 10,
+  detect_column_semantics: 20,
+  generate_data_documentation: 10,
+  create_quality_rule: 20,
+  evaluate_quality_rules: 20,
 };
 
 export const registry = new DatasetRegistry();

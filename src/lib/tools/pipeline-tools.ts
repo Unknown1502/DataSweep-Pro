@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { exportPipeline, type ExportFormat } from '../domain/export';
+import { toGreatExpectations } from '../domain/great-expectations';
+import { detectColumnSemantics } from '../domain/quality/semantics';
+import type { SemanticDetection } from '../domain/quality/semantics';
+import { profileColumns } from '../engine/introspect';
 import {
   checkCompatibility,
   pipelineFromDataset,
@@ -15,7 +19,7 @@ import { withGuards, type ToolContext } from './guards';
 import { datasetIdJson, confirmationTokenJson, parseOrThrow } from './schemas';
 import type { ToolDefinition, ToolFactory } from './types';
 
-const FORMATS = ['sql', 'python', 'dbt', 'json'] as const;
+const FORMATS = ['sql', 'python', 'dbt', 'json', 'great_expectations'] as const;
 
 // ---------------------------------------------------------------------------
 // export_transformation_pipeline
@@ -29,9 +33,10 @@ const exportSchema = z.object({
 export const exportTransformationPipeline: ToolFactory = (getContext): ToolDefinition => ({
   name: 'export_transformation_pipeline',
   description:
-    'Turn the cleaning steps applied to a dataset into runnable code the user can keep — ' +
-    'SQL (as chained CTEs), a pandas script, a dbt model, or portable JSON. Steps the user ' +
-    'undid are excluded. Use this when they ask how to reproduce the cleaning elsewhere.',
+    'Turn the cleaning work into something the user can keep: SQL as chained CTEs, a pandas ' +
+    'script, a dbt model, portable JSON, or a Great Expectations suite that guards future ' +
+    'batches against the same problems. Steps the user undid are excluded. Use this when they ' +
+    'ask how to reproduce or enforce the cleaning elsewhere.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -56,12 +61,35 @@ export const exportTransformationPipeline: ToolFactory = (getContext): ToolDefin
         const dataset = ctx.registry.resolve(input.dataset_id);
         const pipeline = pipelineFromDataset(dataset);
 
+        // A GE suite describes the data's *current* shape, so it needs the
+        // cleaned state rather than the transformation list alone.
+        let code: string;
+        if (input.format === 'great_expectations') {
+          const head = ctx.registry.head(input.dataset_id);
+          const semantics: SemanticDetection[] = [];
+          for (const column of head.columns) {
+            semantics.push(await detectColumnSemantics(ctx.engine, head.id, column));
+          }
+          const profiles = await profileColumns(ctx.engine, head.id, head.columns, 1);
+
+          code = toGreatExpectations({
+            name: `${pipeline.name}_suite`,
+            columns: head.columns,
+            rowCount: head.rowCount,
+            semantics,
+            pipeline,
+            completeColumns: profiles.filter((p) => p.nullCount === 0).map((p) => p.column),
+          });
+        } else {
+          code = exportPipeline(pipeline, input.format as ExportFormat);
+        }
+
         return {
           dataset_id: dataset.id,
           format: input.format,
           step_count: pipeline.steps.length,
           required_columns: pipeline.requiredColumns,
-          code: exportPipeline(pipeline, input.format as ExportFormat),
+          code,
           ...(pipeline.steps.length === 0
             ? { note: 'No cleaning steps have been applied yet, so the export is a passthrough.' }
             : {}),
@@ -461,6 +489,9 @@ export const joinDatasets: ToolFactory = (getContext): ToolDefinition => ({
           `${leftName} + ${rightName}`,
           { rowCount, columns, createdAt: new Date().toISOString() },
           table,
+          0,
+          // Recorded so lineage can show a real merge rather than guess at one.
+          [input.left_dataset_id, input.right_dataset_id],
         );
 
         const sample = await sampleBeforeAfter(ctx.engine, table, table, 5);

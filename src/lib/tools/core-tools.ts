@@ -183,6 +183,19 @@ export const detectDataQualityIssues: ToolFactory = (getContext): ToolDefinition
           summary: report.summary,
           checks_run: report.checksRun,
           rows_skipped_at_load: dataset.skippedRows,
+          // Measured, not asserted: the checks really do overlap, and these
+          // numbers are what makes that checkable rather than a claim.
+          concurrency: {
+            total_ms: report.totalMs,
+            sum_of_check_ms: report.timings.reduce((sum, t) => sum + t.durationMs, 0),
+            checks: report.timings.map((t) => ({
+              check: t.check,
+              start_offset_ms: t.startOffsetMs,
+              duration_ms: t.durationMs,
+              findings: t.findings,
+              failed: t.failed,
+            })),
+          },
           issues: [...parseIssue, ...report.issues.map((issue) => ({
             id: issue.id,
             type: issue.type,
@@ -460,16 +473,31 @@ export const generateImpactReport: ToolFactory = (getContext): ToolDefinition =>
           rowCount: head.rowCount,
         });
 
-        const calls = ctx.audit
-          .entries()
-          .filter((e) => e.outcome === 'ok' || e.outcome === 'awaiting_confirmation');
+        /** The single assumption in this report, isolated so it is reviewable. */
+        const MINUTES_PER_STEP_BY_HAND = 12;
         const appliedSteps = dataset.headIndex;
 
-        // Effort estimate, stated as an estimate with its basis shown rather
-        // than presented as a measurement. An unexplained "3.2 hours saved" is
-        // not a number anyone should trust.
-        const MINUTES_PER_STEP_BY_HAND = 12;
-        const estimatedMinutes = appliedSteps * MINUTES_PER_STEP_BY_HAND;
+        // Everything below is measured. The audit ledger holds real durations
+        // for every call, so "time spent" is observed rather than modelled.
+        const entries = ctx.audit.entries();
+        const succeeded = entries.filter((e) => e.outcome === 'ok');
+        const toolMs = entries.reduce((sum, e) => sum + e.durationMs, 0);
+
+        const byActor: Record<string, number> = {};
+        for (const entry of succeeded) {
+          byActor[entry.actor] = (byActor[entry.actor] ?? 0) + 1;
+        }
+
+        const stepDetail = dataset.history.slice(1, dataset.headIndex + 1).map((c, i) => {
+          const previous = dataset.history[i];
+          return {
+            checkpoint_id: c.id,
+            label: c.label,
+            rows_before: previous?.rowCount ?? 0,
+            rows_after: c.rowCount,
+            rows_changed: (previous?.rowCount ?? 0) - c.rowCount,
+          };
+        });
 
         return {
           dataset_id: dataset.id,
@@ -490,12 +518,32 @@ export const generateImpactReport: ToolFactory = (getContext): ToolDefinition =>
             created_at: c.createdAt,
             is_current: index === dataset.headIndex,
           })),
-          tool_calls: calls.length,
-          effort_estimate: {
-            minutes_saved: estimatedMinutes,
-            basis: `${appliedSteps} cleaning step(s) x ${MINUTES_PER_STEP_BY_HAND} min, the rough ` +
-              'time to write, verify and document one equivalent transformation by hand.',
-            caveat: 'An estimate from step count, not a measurement of your actual workflow.',
+          measured: {
+            rows_in: original?.rowCount ?? 0,
+            rows_out: head.rowCount,
+            rows_removed: (original?.rowCount ?? 0) - head.rowCount,
+            rows_skipped_at_load: dataset.skippedRows,
+            steps_applied: appliedSteps,
+            steps: stepDetail,
+            tool_calls_total: entries.length,
+            tool_calls_succeeded: succeeded.length,
+            tool_calls_by_actor: byActor,
+            tool_time_ms: toolMs,
+            quality_score_now: report.score,
+            issues_remaining: report.issues.length,
+            issues_remaining_high: report.issues.filter((i) => i.severity === 'high').length,
+          },
+          // Kept separate from `measured` on purpose. This is the one number
+          // here that is not observed, and collapsing it in with the rest would
+          // lend it a precision it does not have.
+          estimated: {
+            manual_minutes_saved: appliedSteps * MINUTES_PER_STEP_BY_HAND,
+            basis:
+              `${appliedSteps} cleaning step(s) x ${MINUTES_PER_STEP_BY_HAND} min, a rough figure ` +
+              'for writing, verifying and documenting one equivalent transformation by hand.',
+            caveat:
+              'An assumption, not a measurement. Nothing here observed how long this would have ' +
+              'taken you, so treat it as an order of magnitude and nothing more.',
           },
         };
       },

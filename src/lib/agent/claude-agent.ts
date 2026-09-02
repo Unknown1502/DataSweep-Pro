@@ -105,7 +105,7 @@ export function createClaudeAgent(apiKey: string): Agent {
             yield { type: 'tool', name: use.name, args: use.input };
 
             try {
-              const raw = await callTool(use.name, use.input);
+              const raw = await callTool(use.name, use.input, 'claude-agent');
               const result = raw as Record<string, unknown>;
 
               if (result?.['status'] === 'confirmation_required') {
@@ -129,10 +129,14 @@ export function createClaudeAgent(apiKey: string): Agent {
                 }
 
                 // The token is redeemed here. It is never shown to the model.
-                const applied = await callTool(use.name, {
-                  ...(use.input as Record<string, unknown>),
-                  confirmation_token: result['confirmation_token'],
-                });
+                const applied = await callTool(
+                  use.name,
+                  {
+                    ...(use.input as Record<string, unknown>),
+                    confirmation_token: result['confirmation_token'],
+                  },
+                  'claude-agent',
+                );
 
                 results.push({
                   type: 'tool_result',
