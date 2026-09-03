@@ -1,0 +1,68 @@
+name: Deploy to GitHub Pages
+
+# The judges need a live URL. This publishes the built bundle to GitHub Pages on
+# every push to master.
+#
+# The app is a static bundle with no server: DuckDB runs in the visitor's tab and
+# the WebMCP tools register on `document.modelContext` client-side, so there is
+# nothing to host beyond the files themselves. Routing needs no rewrite rule
+# either — the selected dataset lives in the URL hash.
+
+on:
+  push:
+    branches: [master]
+  # So the site can be republished without an empty commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a run finish rather than cancelling it: a half-deployed site is worse than
+# a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Tests gate the deploy. Publishing a build whose security evals fail
+      # would undermine the only claim this project actually makes.
+      - run: npm test
+
+      - run: npm run build
+        env:
+          # Project sites live at /<repo>/, so assets need that prefix.
+          PUBLIC_BASE_PATH: /${{ github.event.repository.name }}/
+
+      # GitHub Pages serves 404.html for unknown paths. Pointing it at the app
+      # means a deep link still lands somewhere useful instead of a Pages error.
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -8,6 +8,17 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+  /*
+   * GitHub Pages serves a project site from /<repo>/, not from the root, so the
+   * built asset URLs need that prefix. It is set by the deploy workflow rather
+   * than hardcoded, because `npm run dev` and every other host serve from `/`
+   * and a baked-in prefix would break all of them.
+   *
+   * Routing needs no server rewrite: the selected dataset lives in the URL
+   * hash, so there is only ever one document to serve.
+   */
+  base: process.env.PUBLIC_BASE_PATH ?? '/',
+
   plugins: [react(), tailwindcss()],
 
   resolve: {
