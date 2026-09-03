@@ -1,0 +1,19 @@
+sequenceDiagram
+    autonumber
+    participant A as Agent or UI
+    participant G as withGuards()
+    participant D as DuckDB
+
+    A->>G: apply_cleaning_transformations(args)
+    Note over G: no confirmation_token
+    G->>D: run against scratch tables
+    D-->>G: measured row counts
+    G->>D: DROP scratch tables
+    G-->>A: preview + token
+    Note over A,D: your data is untouched
+
+    A->>G: same args + token
+    G->>G: fingerprint matches? unused? unexpired?
+    G->>D: materialize new checkpoint table
+    D-->>G: committed
+    G-->>A: applied, reversible from the ledger

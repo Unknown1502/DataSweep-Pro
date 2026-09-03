@@ -1,0 +1,25 @@
+flowchart TB
+    human["<b>You</b><br/>buttons in the UI"]
+    demo["<b>Guided demo</b><br/>scripted agent"]
+    model["<b>Your model</b><br/>8 providers"]
+    mcp["<b>Claude Desktop</b><br/>via local relay"]
+
+    tools["<b>15 WebMCP tools</b><br/>registered on document.modelContext"]
+    guards["<b>withGuards()</b><br/>validate · rate limit · approval gate · audit"]
+    engine["<b>DuckDB-Wasm</b><br/>in your browser tab"]
+
+    human --> tools
+    demo --> tools
+    model --> tools
+    mcp --> tools
+    tools --> guards
+    guards --> engine
+
+    classDef caller fill:#eef4fa,stroke:#4a7fa8,stroke-width:1px,color:#12303f
+    classDef surface fill:#d6ecf8,stroke:#1d6d92,stroke-width:2px,color:#0d2b39
+    classDef gate fill:#fdeacc,stroke:#a8710f,stroke-width:2px,color:#3d2905
+    classDef data fill:#d9f0e3,stroke:#1f7a4d,stroke-width:2px,color:#0c2e1d
+    class human,demo,model,mcp caller
+    class tools surface
+    class guards gate
+    class engine data

@@ -1,0 +1,19 @@
+flowchart TB
+    ui["<b>UI</b> — React components"]
+    ext["<b>External MCP client</b>"]
+    tools["<b>Tools</b> — 15 registrations + withGuards()"]
+    domain["<b>Domain</b> — analyzers · SQL builders · injection · exporters<br/><i>pure, no I/O</i>"]
+    engine["<b>Engine</b> — SqlEngine · registry · ingest · checkpoints"]
+    duck[("DuckDB-Wasm")]
+
+    ui -- "callTool()" --> tools
+    ext -- "document.modelContext" --> tools
+    tools --> domain
+    tools --> engine
+    domain -. "compiles SQL for" .-> engine
+    engine --> duck
+
+    classDef pure fill:#d9f0e3,stroke:#1f7a4d,stroke-width:2px,color:#0c2e1d
+    classDef norm fill:#eef2f6,stroke:#5b6b7c,color:#1c2833
+    class domain pure
+    class ui,ext,tools,engine,duck norm
