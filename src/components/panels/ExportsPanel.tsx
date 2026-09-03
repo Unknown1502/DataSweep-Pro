@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileCode2,
   FileJson,
+  FileSpreadsheet,
   FileText,
   GitBranch,
   GitPullRequest,
@@ -15,10 +16,13 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { rowsToCsv, rowsToJson } from '../../lib/domain/data-export';
 import { unfence } from '../../lib/domain/injection';
 import { GE_TARGET_VERSION } from '../../lib/domain/great-expectations';
+import { quoteIdent } from '../../lib/engine/sql';
 import { configuredMode } from '../../lib/integrations/token-vault';
 import { callTool } from '../../lib/tools';
+import { getToolContext } from '../../lib/tools/context';
 import { useApp, useSelectedDataset } from '../../store/app-store';
 import { useFindings } from '../../store/findings';
 import { Badge } from '../ui/badge';
@@ -86,6 +90,25 @@ const FORMATS: readonly Format[] = [
     language: 'markdown',
     deterministic: true,
   },
+  {
+    id: 'csv',
+    label: 'Cleaned CSV',
+    icon: FileSpreadsheet,
+    blurb: 'The actual cleaned rows, exactly as they stand right now.',
+    language: 'csv',
+    // Not deterministic in the sense the others are: the badge means
+    // "reruns to the same output", and this output changes as soon as you
+    // apply the next transformation. It is a snapshot, not a recipe.
+    deterministic: false,
+  },
+  {
+    id: 'data_json',
+    label: 'Cleaned JSON',
+    icon: FileJson,
+    blurb: 'The same rows as an array of objects.',
+    language: 'json',
+    deterministic: false,
+  },
 ];
 
 const EXTENSIONS: Record<string, string> = {
@@ -95,7 +118,12 @@ const EXTENSIONS: Record<string, string> = {
   json: 'json',
   great_expectations: 'json',
   docs: 'md',
+  csv: 'csv',
+  data_json: 'json',
 };
+
+/** Every format that queries live rows rather than compiling the pipeline. */
+const DATA_FORMATS = new Set(['csv', 'data_json']);
 
 /**
  * Take the work with you.
@@ -135,6 +163,19 @@ export function ExportsPanel({ initialFormat = 'sql' }: { initialFormat?: string
           // The fence is for agents; a person reading the panel wants the doc.
           setCode(unfence(result.documentation));
           setSteps(0);
+          return;
+        }
+
+        if (DATA_FORMATS.has(format)) {
+          // Queried directly against the live checkpoint table, the same way
+          // the Data tab does — this is a snapshot of rows, not a compiled
+          // pipeline, so it does not go through export_transformation_pipeline.
+          const ctx = getToolContext();
+          const head = dataset.history[dataset.headIndex]!;
+          const result = await ctx.engine.query(`SELECT * FROM ${quoteIdent(head.id)}`);
+          if (cancelled) return;
+          setCode(format === 'csv' ? rowsToCsv(head.columns, result.rows) : rowsToJson(result.rows));
+          setSteps(dataset.headIndex);
           return;
         }
 
@@ -301,7 +342,9 @@ export function ExportsPanel({ initialFormat = 'sql' }: { initialFormat?: string
           <span className="font-mono text-[11px] text-fg-subtle tabular-nums">
             {format === 'docs'
               ? 'generated from measured data'
-              : `${steps} applied step${steps === 1 ? '' : 's'} · undone steps excluded`}
+              : DATA_FORMATS.has(format)
+                ? `snapshot after ${steps} applied step${steps === 1 ? '' : 's'} · will change if you clean further`
+                : `${steps} applied step${steps === 1 ? '' : 's'} · undone steps excluded`}
           </span>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={() => void copy()} disabled={!code}>
