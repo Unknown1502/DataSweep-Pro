@@ -8,3 +8,9 @@ dist-ssr/
 .vite/
 coverage/
 *.tsbuildinfo
+
+# Demo recording pipeline — regenerate with demo/record.mjs (see docs/DEMO.md).
+# Frames and the rendered video are large binaries; the API key must never ship.
+demo/frames/
+demo/*.mp4
+demo/.env.local
